@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
-// Provider to fetch questions specifically for the active level
+// NEW: Import these so we can refresh their data
+import 'dashboard_screen.dart';
+
 final levelQuestionsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, levelId) async {
   return ref.read(supabaseServiceProvider).getQuestionsForLevel(levelId);
 });
@@ -21,6 +23,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _hasSubmitted = false;
+  bool _isSavingProgress = false; 
   int _score = 0;
 
   void _submitAnswer(List<Map<String, dynamic>> questions) {
@@ -30,7 +33,6 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     final options = currentQuestion['answer_options'] as List<dynamic>;
     final String correctAnswerText = currentQuestion['correct_answer'] as String;
     
-    // Logic to check answer against the dynamic options list
     setState(() {
       _hasSubmitted = true;
       if (options[_selectedIndex!] == correctAnswerText) {
@@ -39,7 +41,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     });
   }
 
-  void _nextQuestion(int totalQuestions) {
+  Future<void> _nextQuestion(int totalQuestions) async {
     if (_currentIndex < totalQuestions - 1) {
       setState(() {
         _currentIndex++;
@@ -47,18 +49,29 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
         _hasSubmitted = false;
       });
     } else {
-      _showLevelCompleteDialog(totalQuestions);
+      setState(() => _isSavingProgress = true);
+
+      final double percentage = _score / totalQuestions;
+      final bool passed = percentage >= 0.8; 
+
+      await ref.read(supabaseServiceProvider).saveLevelProgress(
+        levelId: widget.levelId,
+        scorePercentage: percentage,
+        passed: passed,
+      );
+
+      if (mounted) {
+        setState(() => _isSavingProgress = false);
+        _showLevelCompleteDialog(totalQuestions, passed);
+      }
     }
   }
 
-  void _showLevelCompleteDialog(int totalQuestions) {
+  void _showLevelCompleteDialog(int totalQuestions, bool passed) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final double percentage = _score / totalQuestions;
-        final bool passed = percentage >= 0.8;
-
         return AlertDialog(
           backgroundColor: AppTheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -72,7 +85,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                passed ? 'Level Cleared!' : 'Gate Failed',
+                passed ? 'Gate Cleared!' : 'Gate Failed',
                 style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -80,9 +93,20 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                 'You scored $_score out of $totalQuestions',
                 style: const TextStyle(color: AppTheme.textGrey, fontSize: 16),
               ),
+              if (!passed)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Text('An 80% score is required to unlock the next level.', 
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
+                  // --- CRITICAL FIX: FORCE THE APP TO PULL FRESH DB DATA ---
+                  ref.invalidate(userJourneyProvider);
+                  ref.invalidate(skillMasteryProvider);
+
                   context.pop();
                   context.go('/dashboard'); 
                 },
@@ -121,7 +145,6 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
 
             return Column(
               children: [
-                // Top Progress Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: Row(
@@ -147,8 +170,6 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                     ],
                   ),
                 ),
-
-                // Question Area
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24.0),
@@ -170,8 +191,6 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                     ),
                   ),
                 ),
-
-                // Fixed Action Area (Error was here, fixed spelling of crossAxisAlignment)
                 _buildBottomAction(correctIndex, currentQuestion['explanation'] ?? '', questions),
               ],
             );
@@ -227,16 +246,18 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
       padding: const EdgeInsets.all(24.0),
       color: gotItRight ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start, // FIXED PROPERTY NAME
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(gotItRight ? 'Correct!' : 'Incorrect', style: TextStyle(color: gotItRight ? Colors.greenAccent : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(explanation, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => _nextQuestion(questions.length),
+            onPressed: _isSavingProgress ? null : () => _nextQuestion(questions.length),
             style: ElevatedButton.styleFrom(backgroundColor: gotItRight ? Colors.green : Colors.redAccent),
-            child: const Text('Continue'),
+            child: _isSavingProgress 
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Continue'),
           ),
         ],
       ),
@@ -250,8 +271,8 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
         backgroundColor: AppTheme.surface,
         title: const Text('Leave Session?'),
         actions: [
-          TextButton(onPressed: () => context.pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () { context.pop(); context.go('/dashboard'); }, child: const Text('Leave')),
+          TextButton(onPressed: () => context.pop(), child: const Text('Cancel', style: TextStyle(color: AppTheme.textGrey))),
+          TextButton(onPressed: () { context.pop(); context.go('/dashboard'); }, child: const Text('Leave', style: TextStyle(color: Colors.redAccent))),
         ],
       ),
     );

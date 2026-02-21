@@ -1,95 +1,157 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Provide the SupabaseService globally
 final supabaseServiceProvider = Provider<SupabaseService>((ref) {
-  return SupabaseService(Supabase.instance.client);
+  return SupabaseService();
 });
 
 class SupabaseService {
-  final SupabaseClient _client;
+  final SupabaseClient _client = Supabase.instance.client;
 
-  SupabaseService(this._client);
+  // --- AUTHENTICATION ---
+  Future<AuthResponse> signUp({required String email, required String password}) async {
+    return await _client.auth.signUp(email: email, password: password);
+  }
 
-  /// Fetch all levels ordered by their sequence
-  Future<List<Map<String, dynamic>>> getLevels() async {
+  Future<AuthResponse> signIn({required String email, required String password}) async {
+    return await _client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  Future<void> signOut() async {
+    await _client.auth.signOut();
+  }
+
+  User? get currentUser => _client.auth.currentUser;
+
+  // --- USER DATA ---
+  Future<Map<String, dynamic>> getUserProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
     try {
-      final response = await _client
-          .from('levels')
-          .select()
-          .order('level_order', ascending: true);
-      
-      return List<Map<String, dynamic>>.from(response);
+      final response = await _client.from('users').select().eq('id', user.id).single();
+      return response;
     } catch (e) {
-      print('Error fetching levels: $e');
-      return [];
+      print('Error fetching profile: $e');
+      return {'full_name': 'Agent', 'rank': 'Novice'}; 
     }
   }
 
-  /// Fetch user progress for all levels, merged with level details
-  Future<List<Map<String, dynamic>>> getUserJourney() async {
+  // --- GAMIFIED ENGINE (LEVELS & PROGRESS) ---
+  Future<List<Map<String, dynamic>>> getLevels() async {
+    final response = await _client.from('levels').select().order('level_order', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<Map<String, dynamic>?> getUserProgress(String levelId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      final response = await _client
+          .from('user_level_progress')
+          .select()
+          .eq('user_id', user.id)
+          .eq('level_id', levelId)
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getQuestionsForLevel(String levelId) async {
+    final response = await _client.from('questions').select().eq('level_id', levelId);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> saveLevelProgress({
+    required String levelId,
+    required double scorePercentage,
+    required bool passed,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+
+    await _client.from('user_level_progress').upsert({
+      'user_id': user.id,
+      'level_id': levelId,
+      'highest_score_percentage': scorePercentage,
+      'completed': passed,
+      'last_attempted_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'user_id, level_id');
+  }
+
+  // --- SKILL MASTERY (RPC) ---
+  Future<List<Map<String, dynamic>>> getSkillMastery() async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
     try {
-      // 1. Fetch all levels
-      final levels = await getLevels();
-      
-      // 2. Fetch progress from YOUR specific table name
-      final progressResponse = await _client
-          .from('user_level_progress')
-          .select()
-          .eq('user_id', user.id);
-          
-      final progressList = List<Map<String, dynamic>>.from(progressResponse);
-
-      // 3. Merge the data
-      return levels.map((level) {
-        final progress = progressList.firstWhere(
-          (p) => p['level_id'] == level['id'], 
-          // Default state if no progress record exists yet
-          orElse: () => {'unlocked': false, 'completed': false, 'score': 0},
-        );
-
-        String status = 'locked';
-        if (progress['completed'] == true) {
-          status = 'completed';
-        } else if (progress['unlocked'] == true) {
-          status = 'current';
-        } else if (level['level_order'] == 1) {
-          // Force Level 1 to always be unlocked for new users
-          status = 'current'; 
-        }
-
-        return {
-          'id': level['id'],
-          'level': level['level_order'],
-          'title': level['title'],
-          'subtitle': level['description'] ?? 'No description', // Map your DB column to the UI
-          'status': status,
-          // Convert your numeric score into the text format the UI expects
-          'score': status == 'locked' ? 'Locked' : 'Score: ${progress['score'] ?? 0}',
-        };
-      }).toList();
-
+      final response = await _client.rpc('get_user_skill_mastery', params: {'user_uuid': user.id});
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching journey: $e');
+      print('Error fetching skill mastery: $e');
       return [];
     }
   }
 
-  /// Fetch questions for a specific level (gates)
-  Future<List<Map<String, dynamic>>> getQuestionsForLevel(String levelId) async {
+  // --- PHASE 3: MOCK EXAM LOGIC ---
+  Future<List<Map<String, dynamic>>> getMockExamQuestions({int limit = 20}) async {
     try {
       final response = await _client
           .from('questions')
-          .select()
-          .eq('level_id', levelId);
+          .select('*, skill_areas(title)') 
+          .limit(100); 
       
-      return List<Map<String, dynamic>>.from(response);
+      final List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(response);
+      questions.shuffle();
+      return questions.take(limit).toList();
     } catch (e) {
-      print('Error fetching questions: $e');
+      print('Error fetching mock exam questions: $e');
       return [];
+    }
+  }
+
+  Future<void> saveMockExamResult({
+    required int score,
+    required int totalQuestions,
+    required bool passed,
+    required int timeTakenSeconds,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _client.from('exam_results').insert({
+        'user_id': user.id,
+        'score': score,
+        'total_questions': totalQuestions,
+        'passed': passed,
+        'time_taken_seconds': timeTakenSeconds,
+      });
+    } catch (e) {
+      print('Error saving exam result: $e');
+    }
+  }
+
+  // Check if the user has successfully passed the Mock Exam
+  Future<bool> hasPassedFinalExam() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return false;
+
+    try {
+      final response = await _client
+          .from('exam_results')
+          .select('passed')
+          .eq('user_id', user.id)
+          .eq('passed', true)
+          .limit(1);
+          
+      return response.isNotEmpty; 
+    } catch (e) {
+      print('Error checking final exam status: $e');
+      return false;
     }
   }
 }

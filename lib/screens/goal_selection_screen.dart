@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme.dart';
 
 class GoalSelectionScreen extends StatefulWidget {
@@ -10,10 +12,12 @@ class GoalSelectionScreen extends StatefulWidget {
 
 class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
   int? _selectedIndex;
+  bool _isLoading = false; // Added loading state
 
-  // Data structure for the goal options
+  // Added 'id' to map to the database
   final List<Map<String, dynamic>> _goals = [
     {
+      'id': 'certified',
       'icon': Icons.verified_outlined,
       'title': 'Get Certified',
       'subtitle': 'Earn recognized credentials to boost your resume.',
@@ -21,6 +25,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       'bgColor': const Color(0xFF2E1A47),
     },
     {
+      'id': 'skills',
       'icon': Icons.psychology_outlined,
       'title': 'Master New Skills',
       'subtitle': 'Deepen your technical knowledge in specific areas.',
@@ -28,6 +33,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       'bgColor': const Color(0xFF1A3B3A),
     },
     {
+      'id': 'pivot',
       'icon': Icons.rocket_launch_outlined,
       'title': 'Career Pivot',
       'subtitle': 'Transition to a new role or industry entirely.',
@@ -35,6 +41,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       'bgColor': const Color(0xFF4A2B1A),
     },
     {
+      'id': 'explore',
       'icon': Icons.explore_outlined,
       'title': 'Just Exploring',
       'subtitle': 'Browsing courses without a specific end goal.',
@@ -42,6 +49,33 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       'bgColor': const Color(0xFF4A1A31),
     },
   ];
+
+  // --- NEW: Backend Logic ---
+  Future<void> _saveGoalAndContinue() async {
+    if (_selectedIndex == null) return;
+    
+    setState(() => _isLoading = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser!.id;
+      final selectedGoalId = _goals[_selectedIndex!]['id'];
+      
+      // Update the profile in Supabase
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'primary_goal': selectedGoalId})
+          .eq('id', userId);
+
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving goal: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +93,8 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                    // Replaced Navigator with GoRouter
+                    onPressed: () => context.pop(), 
                     padding: EdgeInsets.zero,
                     alignment: Alignment.centerLeft,
                   ),
@@ -76,9 +111,8 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      // Handle Skip
-                    },
+                    // Replaced empty comment with route to dashboard
+                    onPressed: () => context.go('/dashboard'),
                     child: const Text(
                       'Skip',
                       style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
@@ -134,22 +168,21 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
 
               // Continue Button
               ElevatedButton(
-                onPressed: _selectedIndex != null
-                    ? () {
-                        // Navigate to next screen and save preference
-                      }
-                    : null, // Disabled if nothing is selected
+                // Hooked up the new async function here
+                onPressed: _selectedIndex != null && !_isLoading ? _saveGoalAndContinue : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _selectedIndex != null ? AppTheme.primary : AppTheme.border,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('Continue'),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 20),
-                  ],
-                ),
+                child: _isLoading 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text('Continue'),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward, size: 20),
+                      ],
+                    ),
               ),
             ],
           ),

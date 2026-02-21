@@ -2,137 +2,120 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
-import '../services/supabase_service.dart';
-
-final userJourneyProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final supabaseService = ref.read(supabaseServiceProvider);
-  return await supabaseService.getUserJourney();
-});
+import 'dashboard_screen.dart'; // IMPORTANT: Imports the provider from Dashboard
 
 class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final journeyAsyncValue = ref.watch(userJourneyProvider);
+    // Watch the global provider defined in dashboard_screen.dart
+    final journeyAsync = ref.watch(userJourneyProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            backgroundColor: AppTheme.background,
-            floating: true,
-            pinned: true,
-            elevation: 0,
-            title: const Text(
-              'Journey Map',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+      backgroundColor: AppTheme.background,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text('Exploration Map', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
             ),
-          ),
-          journeyAsyncValue.when(
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-            ),
-            error: (err, stack) => SliverFillRemaining(
-              child: Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
-            ),
-            data: (levels) {
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final levelData = levels[index];
+            Expanded(
+              child: journeyAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                error: (err, stack) => Center(child: Text('Error loading map: $err', style: const TextStyle(color: Colors.redAccent))),
+                data: (journeyData) {
+                  final List<dynamic> levels = journeyData['levels'];
+                  
+                  if (levels.isEmpty) {
+                    return const Center(child: Text('No levels available yet.', style: TextStyle(color: Colors.white)));
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    itemCount: levels.length,
+                    itemBuilder: (context, index) {
+                      final level = levels[index];
+                      final bool isCompleted = level['isCompleted'] ?? false;
+                      final bool isLocked = level['isLocked'] ?? true;
+                      
                       return _buildTimelineTile(
-                        context: context,
-                        isFirst: index == 0,
+                        context,
+                        title: level['title'] ?? 'Unknown',
+                        description: level['description'] ?? '',
+                        isCompleted: isCompleted,
+                        isLocked: isLocked,
                         isLast: index == levels.length - 1,
-                        levelId: levelData['id'].toString(),
-                        levelNumber: levelData['level'] as int,
-                        title: levelData['title'] as String,
-                        subtitle: levelData['subtitle'] as String,
-                        status: levelData['status'] as String,
-                        score: levelData['score'] as String,
+                        levelId: level['id'],
                       );
                     },
-                    childCount: levels.length,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTimelineTile({
-    required BuildContext context,
-    required bool isFirst,
+  Widget _buildTimelineTile(BuildContext context, {
+    required String title,
+    required String description,
+    required bool isCompleted,
+    required bool isLocked,
     required bool isLast,
     required String levelId,
-    required int levelNumber,
-    required String title,
-    required String subtitle,
-    required String status,
-    required String score,
   }) {
-    final bool isCurrent = status == 'current';
-    final bool isCompleted = status == 'completed';
-    final bool isLocked = status == 'locked';
+    Color nodeColor = AppTheme.border;
+    if (isCompleted) nodeColor = Colors.greenAccent;
+    else if (!isLocked) nodeColor = AppTheme.primary;
 
     return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 40,
-            child: Column(
-              children: [
-                Expanded(child: Container(width: 4, color: isFirst ? Colors.transparent : AppTheme.primary)),
-                Container(
-                  height: 32, width: 32,
-                  decoration: BoxDecoration(
-                    color: isLocked ? AppTheme.background : AppTheme.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: isLocked ? AppTheme.border : AppTheme.primary, width: 3),
-                  ),
-                  child: Icon(isCompleted ? Icons.check : (isLocked ? Icons.lock : Icons.play_arrow), color: Colors.white, size: 16),
+          Column(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: isCompleted ? Colors.greenAccent.withOpacity(0.2) : (isLocked ? AppTheme.surface : AppTheme.primary.withOpacity(0.2)),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: nodeColor, width: 2),
                 ),
-                Expanded(child: Container(width: 4, color: isLast ? Colors.transparent : AppTheme.primary)),
-              ],
-            ),
+                child: Icon(
+                  isCompleted ? Icons.check : (isLocked ? Icons.lock : Icons.play_arrow),
+                  size: 16, color: nodeColor,
+                ),
+              ),
+              if (!isLast)
+                Expanded(child: Container(width: 2, color: isCompleted ? Colors.greenAccent : AppTheme.border)),
+            ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 24),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 32.0),
-              child: Opacity(
-                opacity: isLocked ? 0.5 : 1.0,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isCurrent ? const Color(0xFF1E1A3A) : AppTheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isCurrent ? AppTheme.primary : AppTheme.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('LEVEL $levelNumber', style: const TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(subtitle, style: const TextStyle(color: AppTheme.textGrey, fontSize: 14)),
-                      if (isCurrent) ...[
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => context.push('/level/$levelId'),
-                          child: const Center(child: Text('Start Chapter')),
-                        ),
-                      ]
-                    ],
-                  ),
+            child: Opacity(
+              opacity: isLocked ? 0.5 : 1.0,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 32),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(description, style: const TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+                    const SizedBox(height: 16),
+                    if (!isLocked && !isCompleted)
+                      ElevatedButton(
+                        onPressed: () => context.push('/level/$levelId'),
+                        child: const Text('Start Chapter'),
+                      ),
+                  ],
                 ),
               ),
             ),

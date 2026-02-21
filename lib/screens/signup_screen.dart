@@ -85,7 +85,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (next is AuthError) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.message), backgroundColor: Colors.redAccent));
       } else if (next is AuthAuthenticated) {
-        context.go('/dashboard');
+        context.go('/goal-selection');
       }
     });
 

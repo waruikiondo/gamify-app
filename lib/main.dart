@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart'; // Added to access router
+import 'package:go_router/go_router.dart'; 
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Added for environment variables
 
 import 'core/theme.dart';
 import 'core/router.dart';
 
-// TODO: Replace with your actual Supabase credentials from your Supabase Dashboard
-const supabaseUrl = 'https://pxvurufjxyogyfyejlwp.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dnVydWZqeHlvZ3lmeWVqbHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzOTUxMDEsImV4cCI6MjA4Njk3MTEwMX0.hHP_P9ohsq03-NRb87Y5tKgDF1t9q4vI_5waMn0aaVA';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase Backend
+  // Load the environment variables from the .env file
+  await dotenv.load(fileName: ".env");
+
+  // Initialize Supabase Backend securely using the .env variables
   await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   runApp(

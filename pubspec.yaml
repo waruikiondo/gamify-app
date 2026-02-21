@@ -39,6 +39,7 @@ dependencies:
   go_router: ^17.1.0
   google_fonts: ^8.0.2
   confetti: ^0.8.0
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -92,3 +93,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+  assets:
+    - .env
+

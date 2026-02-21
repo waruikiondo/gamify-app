@@ -1,15 +1,62 @@
+import '../providers/global_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme.dart';
+import '../services/supabase_service.dart'; // Added to check admin status
 import 'dashboard_screen.dart'; // To access the cert provider
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  int _tapCount = 0;
+  DateTime? _lastTap;
+
+  void _handleSecretTap() async {
+    final now = DateTime.now();
+    // Reset if they tap too slowly (more than 1 second between taps)
+    if (_lastTap != null && now.difference(_lastTap!).inSeconds > 1) {
+      _tapCount = 0; 
+    }
+    
+    _lastTap = now;
+    _tapCount++;
+
+    if (_tapCount == 5) {
+      _tapCount = 0; // Reset after triggering
+      
+      // Show loading while verifying admin status
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Verifying clearance...'), 
+          backgroundColor: AppTheme.border,
+          duration: Duration(seconds: 1),
+        )
+      );
+      
+      final isAdmin = await ref.read(supabaseServiceProvider).isUserAdmin();
+      
+      if (isAdmin && mounted) {
+        context.push('/admin');
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Access Denied: Nice try, Agent.'), 
+            backgroundColor: Colors.redAccent
+          )
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     final fullName = user?.userMetadata?['full_name'] as String? ?? 'Agent';
     final email = user?.email ?? 'Unknown Email';
@@ -23,8 +70,14 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.background,
         elevation: 0,
-        title: const Text('PROFILE', style: TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        title: GestureDetector(
+          onTap: _handleSecretTap, // <-- THE SECRET ENTRANCE
+          child: const Text(
+            'PROFILE', 
+            style: TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 1.5, fontWeight: FontWeight.bold)
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -175,7 +228,7 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
               title: const Text('Delete Account Data', style: TextStyle(color: Colors.redAccent)),
-              onTap: () => Navigator.pop(context), // Would trigger a confirmation dialog in a full implementation
+              onTap: () => Navigator.pop(context), 
             ),
             const SizedBox(height: 24),
           ],

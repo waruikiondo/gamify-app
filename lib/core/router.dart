@@ -18,6 +18,9 @@ import '../screens/dashboard_screen.dart';
 import '../screens/level_screen.dart';
 import '../screens/mock_exam_screen.dart';
 
+// Import the Admin Dashboard Screen
+import '../screens/admin_dashboard_screen.dart';
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/', 
@@ -84,9 +87,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-     path: '/mock-exam',
-     builder: (context, state) => const MockExamScreen(),
-   ),
+        path: '/mock-exam',
+        builder: (context, state) => const MockExamScreen(),
+      ),
+      // ADMIN ROUTE HERE
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
     ],
   );
 });

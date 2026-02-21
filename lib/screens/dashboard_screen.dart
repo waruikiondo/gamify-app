@@ -2,56 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../core/theme.dart';
-import '../services/supabase_service.dart';
+import '../providers/global_providers.dart'; 
 import 'explore_screen.dart'; 
-import 'rank_screen.dart';     // NEW
-import 'profile_screen.dart';  // NEW
-
-// --- GLOBAL STATE PROVIDERS ---
-final userProfileProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.read(supabaseServiceProvider).getUserProfile();
-});
-
-final userJourneyProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final supabase = ref.read(supabaseServiceProvider);
-  final levels = await supabase.getLevels();
-  
-  int completedCount = 0;
-  Map<String, dynamic>? nextLevel;
-
-  for (var level in levels) {
-    final progress = await supabase.getUserProgress(level['id']);
-    final isCompleted = progress != null && progress['completed'] == true;
-    
-    level['isCompleted'] = isCompleted;
-    level['isLocked'] = !isCompleted && nextLevel != null; 
-
-    if (isCompleted) {
-      completedCount++;
-    } else if (nextLevel == null) {
-      nextLevel = level;
-      level['isLocked'] = false; 
-    }
-  }
-
-  return {
-    'levels': levels,
-    'completedCount': completedCount,
-    'totalLevels': levels.length,
-    'nextLevel': nextLevel,
-    'isFullyComplete': completedCount == levels.length,
-  };
-});
-
-final skillMasteryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return await ref.read(supabaseServiceProvider).getSkillMastery();
-});
-
-final finalExamStatusProvider = FutureProvider.autoDispose<bool>((ref) async {
-  return await ref.read(supabaseServiceProvider).hasPassedFinalExam();
-});
-
+import 'rank_screen.dart';     
+import 'profile_screen.dart';  
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -81,8 +37,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             _buildHomeTab(),
             const ExploreScreen(),
-            const RankScreen(),    // REPLACED PLACEHOLDER
-            const ProfileScreen(), // REPLACED PLACEHOLDER
+            const RankScreen(),    
+            const ProfileScreen(), 
           ],
         ),
       ),
@@ -94,6 +50,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     final fullName = user?.userMetadata?['full_name'] as String? ?? 'Agent';
     
+    // Watching the global providers
     final journeyAsyncValue = ref.watch(userJourneyProvider);
     final skillsAsyncValue = ref.watch(skillMasteryProvider); 
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
@@ -146,13 +103,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               alignment: Alignment.centerRight,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent.withValues(alpha: 0.2), 
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
                     Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
                     SizedBox(width: 4),
-                    Text('0 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('12 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -160,8 +120,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             
             // --- OVERALL PROGRESS ---
             journeyAsyncValue.when(
-              loading: () => const Padding(padding: EdgeInsets.symmetric(vertical: 40.0), child: Center(child: CircularProgressIndicator(color: AppTheme.primary))),
-              error: (err, stack) => Padding(padding: const EdgeInsets.symmetric(vertical: 40.0), child: Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent)))),
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40.0), 
+                child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+              ),
+              error: (err, stack) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40.0), 
+                child: Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
+              ),
               data: (journeyData) {
                 final int totalLevels = journeyData['totalLevels'];
                 final int completedLevels = journeyData['completedCount'];
@@ -184,18 +150,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           SizedBox(
                             width: 200, height: 200,
                             child: CircularProgressIndicator(
-                              value: overallProgress, strokeWidth: 12, backgroundColor: AppTheme.border,
-                              color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, strokeCap: StrokeCap.round,
+                              value: overallProgress, 
+                              strokeWidth: 12, 
+                              backgroundColor: AppTheme.border,
+                              color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, 
+                              strokeCap: StrokeCap.round,
                             ),
                           ),
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(isFullyComplete ? Icons.workspace_premium : Icons.military_tech, color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, size: 32),
+                              Icon(isFullyComplete ? Icons.workspace_premium : Icons.military_tech, 
+                                color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, size: 32),
                               const SizedBox(height: 8),
-                              Text('Lvl ${currentLevel['level_order']}', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                              Text('Lvl ${currentLevel['level_order']}', 
+                                style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 4),
-                              Text(isFullyComplete ? 'MAX RANK' : 'CURRENT PHASE', style: TextStyle(color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
+                              Text(isFullyComplete ? 'MAX RANK' : 'CURRENT PHASE', 
+                                style: TextStyle(color: isFullyComplete ? Colors.greenAccent : AppTheme.primary, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 8),
                               Text('$completedLevels / $totalLevels Levels', style: const TextStyle(color: AppTheme.textGrey, fontSize: 12)),
                             ],
@@ -211,25 +183,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     else
                       Container(
                         padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(color: const Color(0xFF1E1A3A), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppTheme.primary.withOpacity(0.3))),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1A3A), 
+                          borderRadius: BorderRadius.circular(24), 
+                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(isFullyComplete ? 'JOURNEY COMPLETE' : 'UP NEXT', style: const TextStyle(color: AppTheme.primary, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
-                                Icon(isFullyComplete ? Icons.done_all : Icons.lock_outline, color: AppTheme.textGrey.withOpacity(0.5), size: 20),
+                                Text(isFullyComplete ? 'JOURNEY COMPLETE' : 'UP NEXT', 
+                                  style: const TextStyle(color: AppTheme.primary, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
+                                Icon(isFullyComplete ? Icons.done_all : Icons.lock_outline, 
+                                  color: AppTheme.textGrey.withValues(alpha: 0.5), size: 20),
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Text('Chapter ${currentLevel['level_order']}:\n${currentLevel['title']}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.2)),
+                            Text('Chapter ${currentLevel['level_order']}:\n${currentLevel['title']}', 
+                              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.2)),
                             const SizedBox(height: 16),
                             Row(
                               children: [
                                 const Icon(Icons.info_outline, color: AppTheme.textGrey, size: 14),
                                 const SizedBox(width: 4),
-                                Expanded(child: Text(currentLevel['description'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textGrey, fontSize: 12))),
+                                Expanded(child: Text(currentLevel['description'] ?? '', 
+                                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textGrey, fontSize: 12))),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -269,7 +249,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const Text('Skill Mastery', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 TextButton(
                   onPressed: () {
-                    // Activate "View All" button
                     final skills = skillsAsyncValue.value ?? [];
                     _showAllSkillsBottomSheet(context, skills, hasPassedFinal);
                   }, 
@@ -294,16 +273,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     final skill = displaySkills[index];
                     final color = _skillColors[index % _skillColors.length];
                     
-                    // Fixed Parsing and Override logic
                     final String title = skill['skill_title']?.toString() ?? skill['title']?.toString() ?? 'Skill Area';
                     
                     double mastery = 0.0;
                     if (hasPassedFinal) {
-                      mastery = 1.0; // Force 100% if certified
+                      mastery = 1.0; 
                     } else {
                       final masteryNum = skill['mastery_percentage'] ?? 0;
                       double rawMastery = masteryNum is int ? masteryNum.toDouble() : (masteryNum as double);
-                      mastery = rawMastery > 1.0 ? rawMastery / 100.0 : rawMastery; // Convert to 0.0 - 1.0 scale safely
+                      mastery = rawMastery > 1.0 ? rawMastery / 100.0 : rawMastery; 
                     }
                     
                     return Expanded(
@@ -370,7 +348,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.2), 
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Icon(Icons.stars, color: color),
                           ),
                           const SizedBox(width: 16),
@@ -410,7 +391,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.amber.withOpacity(0.2), AppTheme.primary.withOpacity(0.1)],
+          colors: [Colors.amber.withValues(alpha: 0.2), AppTheme.primary.withValues(alpha: 0.1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -491,7 +472,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
       decoration: BoxDecoration(
-        color: AppTheme.border.withOpacity(0.3),
+        color: AppTheme.border.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -523,7 +504,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildBottomNav() {
     return Container(
       padding: const EdgeInsets.only(bottom: 24, top: 12),
-      decoration: BoxDecoration(color: AppTheme.background, border: Border(top: BorderSide(color: AppTheme.border.withOpacity(0.5)))),
+      decoration: BoxDecoration(
+        color: AppTheme.background, 
+        border: Border(top: BorderSide(color: AppTheme.border.withValues(alpha: 0.5))),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -533,13 +517,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // --- THE FUNCTIONAL PLAY BUTTON ---
           GestureDetector(
             onTap: () {
-              // 1. Get the current journey state
               final journeyData = ref.read(userJourneyProvider).value;
               if (journeyData != null) {
                 final isFullyComplete = journeyData['isFullyComplete'];
                 final nextLevel = journeyData['nextLevel'];
                 
-                // 2. If finished, launch exam. Else, launch the next level!
                 if (isFullyComplete) {
                   context.push('/mock-exam');
                 } else if (nextLevel != null) {
@@ -549,7 +531,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             },
             child: Container(
               height: 56, width: 56,
-              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppTheme.primary, blurRadius: 15, spreadRadius: -5)]),
+              decoration: const BoxDecoration(
+                color: AppTheme.primary, 
+                shape: BoxShape.circle, 
+                boxShadow: [BoxShadow(color: AppTheme.primary, blurRadius: 15, spreadRadius: -5)],
+              ),
               child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
             ),
           ),

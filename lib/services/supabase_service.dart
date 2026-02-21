@@ -154,4 +154,52 @@ class SupabaseService {
       return false;
     }
   }
+
+  // --- ADMIN & CONTENT MANAGEMENT ---
+  
+  // 1. Secure Check
+  Future<bool> isUserAdmin() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return false;
+    try {
+      final response = await _client.from('users').select('is_admin').eq('id', user.id).single();
+      return response['is_admin'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 2. Add a Level
+  Future<void> addLevel({required String title, required String description, required int levelOrder, required int passingPercentage}) async {
+    await _client.from('levels').insert({
+      'title': title,
+      'description': description,
+      'level_order': levelOrder,
+      'passing_percentage': passingPercentage,
+    });
+  }
+
+  // 3. Add a Question
+  Future<void> addQuestion({
+    required String levelId,
+    required String skillAreaId,
+    required String questionText,
+    required List<String> answerOptions, // Passed as a standard Dart list
+    required String correctAnswer,
+  }) async {
+    await _client.from('questions').insert({
+      'level_id': levelId,
+      'skill_area_id': skillAreaId,
+      'question_text': questionText,
+      // Supabase Flutter automatically converts Dart Lists to JSONB
+      'answer_options': answerOptions, 
+      'correct_answer': correctAnswer,
+    });
+  }
+  
+  // Get Skill Areas for the Dropdown
+  Future<List<Map<String, dynamic>>> getAllSkillAreas() async {
+    final response = await _client.from('skill_areas').select();
+    return List<Map<String, dynamic>>.from(response);
+  }
 }

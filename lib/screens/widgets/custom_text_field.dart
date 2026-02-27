@@ -40,7 +40,7 @@ class CustomTextField extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: AppTheme.textGrey.withOpacity(0.5)),
+            hintStyle: TextStyle(color: AppTheme.textGrey.withValues(alpha:0.5)),
             prefixIcon: icon != null ? Icon(icon, color: AppTheme.textGrey, size: 20) : null,
             suffixIcon: trailing,
             filled: true,
@@ -52,7 +52,7 @@ class CustomTextField extends StatelessWidget {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppTheme.border.withOpacity(0.3)),
+              borderSide: BorderSide(color: AppTheme.border.withValues(alpha:0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),

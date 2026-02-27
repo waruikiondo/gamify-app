@@ -141,7 +141,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+                border: Border.all(color: AppTheme.border.withValues(alpha:0.5)),
               ),
               child: Column(
                 children: [
@@ -188,7 +188,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           height: 4, 
                           decoration: BoxDecoration(
                             // Bar 1 lights up red if strength is >= 1
-                            color: _passwordStrength >= 1 ? Colors.redAccent : AppTheme.border.withOpacity(0.3), 
+                            color: _passwordStrength >= 1 ? Colors.redAccent : AppTheme.border.withValues(alpha:0.3), 
                             borderRadius: BorderRadius.circular(2)
                           )
                         )
@@ -199,7 +199,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           height: 4, 
                           decoration: BoxDecoration(
                             // Bar 2 lights up orange if strength is >= 2
-                            color: _passwordStrength >= 2 ? Colors.orangeAccent : AppTheme.border.withOpacity(0.3), 
+                            color: _passwordStrength >= 2 ? Colors.orangeAccent : AppTheme.border.withValues(alpha:0.3), 
                             borderRadius: BorderRadius.circular(2)
                           )
                         )
@@ -210,7 +210,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           height: 4, 
                           decoration: BoxDecoration(
                             // Bar 3 lights up green if strength is 3
-                            color: _passwordStrength == 3 ? Colors.greenAccent : AppTheme.border.withOpacity(0.3), 
+                            color: _passwordStrength == 3 ? Colors.greenAccent : AppTheme.border.withValues(alpha:0.3), 
                             borderRadius: BorderRadius.circular(2)
                           )
                         )

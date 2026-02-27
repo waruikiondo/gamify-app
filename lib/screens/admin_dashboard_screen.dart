@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
-import 'dashboard_screen.dart'; // Imported to refresh dashboard providers
 
 // Providers to fetch dropdown data for the Questions Manager
 final adminLevelsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -152,7 +151,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   ref.invalidate(userJourneyProvider); 
                 }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                }
               }
             },
             style: _adminButtonStyle(),
@@ -234,13 +235,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const SizedBox(height: 16),
 
           // --- OPTIONS ---
-          _buildOptionRow(_opt1Ctrl, 'Option A'),
-          const SizedBox(height: 12),
-          _buildOptionRow(_opt2Ctrl, 'Option B'),
-          const SizedBox(height: 12),
-          _buildOptionRow(_opt3Ctrl, 'Option C'),
-          const SizedBox(height: 12),
-          _buildOptionRow(_opt4Ctrl, 'Option D'),
+          // FIX APPLIED: Wrapped all options in the new RadioGroup widget
+          RadioGroup<String>(
+            groupValue: _correctOptionValue,
+            onChanged: (val) => setState(() => _correctOptionValue = val),
+            child: Column(
+              children: [
+                _buildOptionRow(_opt1Ctrl, 'Option A'),
+                const SizedBox(height: 12),
+                _buildOptionRow(_opt2Ctrl, 'Option B'),
+                const SizedBox(height: 12),
+                _buildOptionRow(_opt3Ctrl, 'Option C'),
+                const SizedBox(height: 12),
+                _buildOptionRow(_opt4Ctrl, 'Option D'),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 40),
 
@@ -254,17 +264,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     );
   }
 
+  // FIX APPLIED: Removed the deprecated groupValue and onChanged from the individual Radio widget
   Widget _buildOptionRow(TextEditingController controller, String hint) {
     return Row(
       children: [
         Radio<String>(
           value: controller.text,
-          groupValue: _correctOptionValue,
           activeColor: adminCyan,
           fillColor: WidgetStateProperty.resolveWith((states) => adminCyan),
-          onChanged: (val) {
-            setState(() => _correctOptionValue = controller.text);
-          },
         ),
         Expanded(
           child: _buildAdminTextField(controller, hint, Icons.short_text, onChanged: (val) {
@@ -305,7 +312,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         ref.invalidate(userJourneyProvider); 
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+      }
     }
   }
 
@@ -321,10 +330,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.textGrey),
-        prefixIcon: Icon(icon, color: adminCyan.withOpacity(0.5)),
+        prefixIcon: Icon(icon, color: adminCyan.withValues(alpha:0.5)),
         filled: true,
         fillColor: const Color(0xFF131B24),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border.withOpacity(0.5))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border.withValues(alpha:0.5))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: adminCyan, width: 2)),
       ),
     );
@@ -336,12 +345,37 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF131B24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+        border: Border.all(color: AppTheme.border.withValues(alpha:0.5)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: const TextStyle(color: AppTheme.textGrey)),
+          hintResolving dependencies... 
+Downloading packages... 
+  _fe_analyzer_shared 91.0.0 (96.0.0 available)
+  analyzer 8.4.1 (10.2.0 available)
+  app_links 6.4.1 (7.0.0 available)
+  characters 1.4.0 (1.4.1 available)
+  dart_jsonwebtoken 3.3.1 (3.3.2 available)
+  image 4.5.4 (4.8.0 available)
+  matcher 0.12.17 (0.12.19 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.1 available)
+  shared_preferences_android 2.4.20 (2.4.21 available)
+  test 1.26.3 (1.30.0 available)
+  test_api 0.7.7 (0.7.10 available)
+  test_core 0.6.12 (0.6.16 available)
+Got dependencies!
+13 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing gamify...                                                     
+
+  error • The named parameter 'value' isn't defined •
+         lib/screens/admin_dashboard_screen.dart:240:13 •
+         undefined_named_parameter
+
+1 issue found. (ran in 7.1s)
+warui@pop-os:~/Projects/gamify$ : Text(hint, style: const TextStyle(color: AppTheme.textGrey)),
           dropdownColor: const Color(0xFF131B24),
           icon: const Icon(Icons.arrow_drop_down, color: adminCyan),
           isExpanded: true,
@@ -355,7 +389,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   ButtonStyle _adminButtonStyle() {
     return ElevatedButton.styleFrom(
-      backgroundColor: adminCyan.withOpacity(0.1),
+      backgroundColor: adminCyan.withValues(alpha:0.1),
       foregroundColor: adminCyan,
       side: const BorderSide(color: adminCyan, width: 2),
       minimumSize: const Size(double.infinity, 56),

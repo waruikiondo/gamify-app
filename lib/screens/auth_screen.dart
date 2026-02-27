@@ -37,11 +37,17 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       if (mounted) context.go('/dashboard');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
-      );
+      // FIX APPLIED HERE
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      // FIX APPLIED HERE
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

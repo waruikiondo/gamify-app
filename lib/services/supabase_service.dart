@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,8 +33,75 @@ class SupabaseService {
       final response = await _client.from('users').select().eq('id', user.id).single();
       return response;
     } catch (e) {
-      print('Error fetching profile: $e');
+      debugPrint('Error fetching profile: $e');
       return {'full_name': 'Agent', 'rank': 'Novice'}; 
+    }
+  }
+
+  // --- STREAK ENGINE (NEW) ---
+  Future<int> updateAndGetStreak() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return 0;
+
+    try {
+      final userData = await _client.from('users').select('current_streak, last_active_date').eq('id', user.id).single();
+      
+      final now = DateTime.now();
+      // Strip time to just compare the calendar days
+      final today = DateTime(now.year, now.month, now.day); 
+      
+      int currentStreak = userData['current_streak'] ?? 0;
+      final lastActiveStr = userData['last_active_date'];
+      
+      // If they have never logged a streak before
+      if (lastActiveStr == null) {
+        currentStreak = 1;
+        await _client.from('users').update({
+          'current_streak': currentStreak,
+          'last_active_date': today.toIso8601String(),
+        }).eq('id', user.id);
+        return currentStreak;
+      }
+
+      final lastActive = DateTime.parse(lastActiveStr);
+      final lastActiveDay = DateTime(lastActive.year, lastActive.month, lastActive.day);
+      final difference = today.difference(lastActiveDay).inDays;
+
+      if (difference == 1) {
+        // Logged in exactly 1 day later (Consecutive!)
+        currentStreak += 1;
+        await _client.from('users').update({
+          'current_streak': currentStreak,
+          'last_active_date': today.toIso8601String(),
+        }).eq('id', user.id);
+      } else if (difference > 1) {
+        // Missed a day. Streak broken.
+        currentStreak = 1;
+        await _client.from('users').update({
+          'current_streak': currentStreak,
+          'last_active_date': today.toIso8601String(),
+        }).eq('id', user.id);
+      }
+      // If difference == 0, they already logged in today, so we just return the current streak.
+
+      return currentStreak;
+    } catch (e) {
+      debugPrint('Error handling streak: $e');
+      return 0;
+    }
+  }
+
+  // --- PROFILE MANAGEMENT ---
+  Future<void> updateUserName(String newName) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _client.from('users').update({'full_name': newName}).eq('id', user.id);
+      await _client.auth.updateUser(UserAttributes(data: {'full_name': newName}));
+    } catch (e) {
+      debugPrint('Error updating name: $e');
+      rethrow; 
     }
   }
 
@@ -82,6 +150,24 @@ class SupabaseService {
     }, onConflict: 'user_id, level_id');
   }
 
+  Future<void> saveQuestionAttempts(List<Map<String, dynamic>> attempts) async {
+    final user = _client.auth.currentUser;
+    if (user == null || attempts.isEmpty) return;
+
+    try {
+      final dataToInsert = attempts.map((attempt) => {
+        'user_id': user.id,
+        'question_id': attempt['question_id'],
+        'skill_area_id': attempt['skill_area_id'],
+        'passed': attempt['passed'],
+      }).toList();
+
+      await _client.from('user_question_attempts').insert(dataToInsert);
+    } catch (e) {
+      debugPrint('Error saving question attempts: $e');
+    }
+  }
+
   // --- SKILL MASTERY (RPC) ---
   Future<List<Map<String, dynamic>>> getSkillMastery() async {
     final user = _client.auth.currentUser;
@@ -91,7 +177,7 @@ class SupabaseService {
       final response = await _client.rpc('get_user_skill_mastery', params: {'user_uuid': user.id});
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching skill mastery: $e');
+      debugPrint('Error fetching skill mastery: $e');
       return [];
     }
   }
@@ -108,7 +194,7 @@ class SupabaseService {
       questions.shuffle();
       return questions.take(limit).toList();
     } catch (e) {
-      print('Error fetching mock exam questions: $e');
+      debugPrint('Error fetching mock exam questions: $e');
       return [];
     }
   }
@@ -131,11 +217,10 @@ class SupabaseService {
         'time_taken_seconds': timeTakenSeconds,
       });
     } catch (e) {
-      print('Error saving exam result: $e');
+      debugPrint('Error saving exam result: $e');
     }
   }
 
-  // Check if the user has successfully passed the Mock Exam
   Future<bool> hasPassedFinalExam() async {
     final user = _client.auth.currentUser;
     if (user == null) return false;
@@ -150,14 +235,47 @@ class SupabaseService {
           
       return response.isNotEmpty; 
     } catch (e) {
-      print('Error checking final exam status: $e');
+      debugPrint('Error checking final exam status: $e');
       return false;
     }
   }
 
+  Future<DateTime?> getLastFailedExamTime() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      final response = await _client
+          .from('exam_results')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .eq('passed', false)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+          
+      if (response != null && response['created_at'] != null) {
+        return DateTime.parse(response['created_at']);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error checking exam cooldown: $e');
+      return null;
+    }
+  }
+
+  // --- LEADERBOARD ---
+  Future<List<Map<String, dynamic>>> getLeaderboard() async {
+    try {
+      final response = await _client.rpc('get_leaderboard');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error fetching leaderboard: $e');
+      return [];
+    }
+  }
+
   // --- ADMIN & CONTENT MANAGEMENT ---
-  
-  // 1. Secure Check
   Future<bool> isUserAdmin() async {
     final user = _client.auth.currentUser;
     if (user == null) return false;
@@ -169,7 +287,6 @@ class SupabaseService {
     }
   }
 
-  // 2. Add a Level
   Future<void> addLevel({required String title, required String description, required int levelOrder, required int passingPercentage}) async {
     await _client.from('levels').insert({
       'title': title,
@@ -179,25 +296,22 @@ class SupabaseService {
     });
   }
 
-  // 3. Add a Question
   Future<void> addQuestion({
     required String levelId,
     required String skillAreaId,
     required String questionText,
-    required List<String> answerOptions, // Passed as a standard Dart list
+    required List<String> answerOptions, 
     required String correctAnswer,
   }) async {
     await _client.from('questions').insert({
       'level_id': levelId,
       'skill_area_id': skillAreaId,
       'question_text': questionText,
-      // Supabase Flutter automatically converts Dart Lists to JSONB
       'answer_options': answerOptions, 
       'correct_answer': correctAnswer,
     });
   }
   
-  // Get Skill Areas for the Dropdown
   Future<List<Map<String, dynamic>>> getAllSkillAreas() async {
     final response = await _client.from('skill_areas').select();
     return List<Map<String, dynamic>>.from(response);

@@ -5,9 +5,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../providers/global_providers.dart'; 
+import '../services/supabase_service.dart';
 import 'explore_screen.dart'; 
 import 'rank_screen.dart';     
 import 'profile_screen.dart';  
+
+// --- NEW PDF IMPORTS ---
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import '../services/analytics_service.dart';
+
+// NEW: Dynamic Streak Provider
+final userStreakProvider = FutureProvider.autoDispose<int>((ref) async {
+  return await ref.read(supabaseServiceProvider).updateAndGetStreak();
+});
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -55,6 +67,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final skillsAsyncValue = ref.watch(skillMasteryProvider); 
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
     final bool hasPassedFinal = hasPassedExamAsync.value ?? false;
+    
+    // Watching the newly created streak provider
+    final streakAsyncValue = ref.watch(userStreakProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -62,6 +77,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ref.invalidate(userJourneyProvider);
         ref.invalidate(skillMasteryProvider);
         ref.invalidate(finalExamStatusProvider);
+        ref.invalidate(userStreakProvider); // Invalidate streak too
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -92,13 +108,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.settings, color: AppTheme.textGrey),
-                  onPressed: () => setState(() => _currentIndex = 3), // Route to Profile tab
+                  onPressed: () => setState(() => _currentIndex = 3), 
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
-            // STREAK BADGE
+            // DYNAMIC STREAK BADGE
             Align(
               alignment: Alignment.centerRight,
               child: Container(
@@ -109,10 +125,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
-                    SizedBox(width: 4),
-                    Text('12 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                  children: [
+                    const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
+                    const SizedBox(width: 4),
+                    streakAsyncValue.when(
+                      loading: () => const SizedBox(
+                        height: 12, width: 12, 
+                        child: CircularProgressIndicator(color: Colors.orangeAccent, strokeWidth: 2)
+                      ),
+                      error: (err, stack) => const Text('0 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                      data: (streak) => Text('$streak Days', style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
                   ],
                 ),
               ),
@@ -179,7 +202,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                     // CERTIFICATE OR UP NEXT CARD
                     if (hasPassedFinal)
-                      _buildCertificateCard(context)
+                      _buildCertificateCard(context, fullName) // PASSING FULL NAME HERE
                     else
                       Container(
                         padding: const EdgeInsets.all(24),
@@ -386,7 +409,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildCertificateCard(BuildContext context) {
+  // --- UPDATED: Pass the fullName into the card ---
+  Widget _buildCertificateCard(BuildContext context, String fullName) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -420,7 +444,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => _showCertificateDialog(context), 
+            // Pass the fullName to the dialog
+            onPressed: () => _showCertificateDialog(context, fullName), 
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,
               minimumSize: const Size(double.infinity, 48),
@@ -439,12 +464,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _showCertificateDialog(BuildContext context) {
+  // --- UPDATED: Added Download Button to Dialog ---
+ // --- UPDATED: Fixed the Infinite Width Theme Clash ---
+  void _showCertificateDialog(BuildContext context, String fullName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        contentPadding: const EdgeInsets.all(32),
+        contentPadding: const EdgeInsets.fromLTRB(32, 32, 32, 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Colors.amber, width: 2)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -456,15 +483,87 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const Text('Cloud Architect', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text('Has successfully passed the Final Boss Mock Exam and demonstrated mastery in the subject matter.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context), 
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.border),
-              child: const Text('Close'),
-            )
           ],
         ),
+        // FIX 1: Use the native actions property for dialog buttons
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.only(bottom: 24),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('Close', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _downloadCertificate(fullName); // Trigger PDF generation
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              // FIX 2: Override any global "double.infinity" themes!
+              minimumSize: const Size(0, 48), 
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.download, color: Colors.black, size: 18),
+                SizedBox(width: 8),
+                Text('Download PDF', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          )
+        ],
       )
+    );
+  }
+
+  // --- NEW: PDF Generation Logic ---
+  Future<void> _downloadCertificate(String userName) async {
+    ref.read(analyticsServiceProvider).trackCertificateDownloaded(userName);
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        build: (pw.Context context) {
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(40),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.amber, width: 8),
+            ),
+            child: pw.Center(
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  pw.Text('CERTIFICATE OF COMPLETION', style: pw.TextStyle(fontSize: 36, fontWeight: pw.FontWeight.bold, color: PdfColors.amber)),
+                  pw.SizedBox(height: 24),
+                  pw.Text('This is proudly presented to', style: const pw.TextStyle(fontSize: 20)),
+                  pw.SizedBox(height: 24),
+                  pw.Text(userName.toUpperCase(), style: pw.TextStyle(fontSize: 48, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                  pw.SizedBox(height: 24),
+                  pw.Text('For successfully passing the Final Challenge and demonstrating mastery as an', style: const pw.TextStyle(fontSize: 16)),
+                  pw.SizedBox(height: 12),
+                  pw.Text('Official Cloud Architect', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 60),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Date: ${DateTime.now().toString().split(' ')[0]}', style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text('Signature: ___________________', style: const pw.TextStyle(fontSize: 16)),
+                    ]
+                  )
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    // This handles both Web downloading and Mobile printing/saving natively!
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Cloud_Architect_Certificate_$userName.pdf',
     );
   }
 

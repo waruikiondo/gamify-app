@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
-// NEW: Import these so we can refresh their data
-import 'dashboard_screen.dart';
+// Import our new brain
+import '../providers/game_state_provider.dart'; 
 
 final levelQuestionsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, levelId) async {
   return ref.read(supabaseServiceProvider).getQuestionsForLevel(levelId);
@@ -26,6 +26,9 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
   bool _hasSubmitted = false;
   bool _isSavingProgress = false; 
   int _score = 0;
+  
+  // NEW: List to keep track of every attempt in this session
+  final List<Map<String, dynamic>> _questionAttempts = [];
 
   void _submitAnswer(List<Map<String, dynamic>> questions) {
     if (_selectedIndex == null) return;
@@ -34,9 +37,18 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     final options = currentQuestion['answer_options'] as List<dynamic>;
     final String correctAnswerText = currentQuestion['correct_answer'] as String;
     
+    final bool passed = options[_selectedIndex!] == correctAnswerText;
+
+    // Record the attempt for Skill Mastery tracking
+    _questionAttempts.add({
+      'question_id': currentQuestion['id'],
+      'skill_area_id': currentQuestion['skill_area_id'],
+      'passed': passed,
+    });
+    
     setState(() {
       _hasSubmitted = true;
-      if (options[_selectedIndex!] == correctAnswerText) {
+      if (passed) {
         _score++;
       }
     });
@@ -52,23 +64,31 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     } else {
       setState(() => _isSavingProgress = true);
 
-      final double percentage = _score / totalQuestions;
-      final bool passed = percentage >= 0.8; 
+      // 1. Send all our recorded attempts to the database for Skill Mastery
+      if (_questionAttempts.isNotEmpty) {
+        await ref.read(supabaseServiceProvider).saveQuestionAttempts(_questionAttempts);
+      }
 
-      await ref.read(supabaseServiceProvider).saveLevelProgress(
-        levelId: widget.levelId,
+      final double percentage = (_score / totalQuestions) * 100;
+      
+      // 2. Fetch the actual Level object to get dynamic rules (like passing_percentage)
+      final levels = await ref.read(levelsProvider.future);
+      final currentLevel = levels.firstWhere((l) => l.id == widget.levelId);
+
+      // 3. Let our central GameStateNotifier handle the DB upserts and unlocks
+      final passed = await ref.read(gameStateProvider.notifier).evaluateAndUnlockNextLevel(
+        currentLevel: currentLevel,
         scorePercentage: percentage,
-        passed: passed,
       );
 
       if (mounted) {
         setState(() => _isSavingProgress = false);
-        _showLevelCompleteDialog(totalQuestions, passed);
+        _showLevelCompleteDialog(totalQuestions, passed, currentLevel.passingPercentage);
       }
     }
   }
 
-  void _showLevelCompleteDialog(int totalQuestions, bool passed) {
+  void _showLevelCompleteDialog(int totalQuestions, bool passed, int requiredPercentage) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -95,17 +115,19 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                 style: const TextStyle(color: AppTheme.textGrey, fontSize: 16),
               ),
               if (!passed)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
-                  child: Text('An 80% score is required to unlock the next level.', 
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'A $requiredPercentage% score is required to unlock the next level.', 
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  ),
                 ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  // --- CRITICAL FIX: FORCE THE APP TO PULL FRESH DB DATA ---
-                  ref.invalidate(userJourneyProvider);
+                  // Invalidate journey and skill mastery so the dashboard updates
+                  ref.invalidate(userJourneyProvider); 
                   ref.invalidate(skillMasteryProvider);
 
                   context.pop();
@@ -208,9 +230,13 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     Color borderColor = AppTheme.border;
     Color bgColor = AppTheme.surface;
 
+    // FIX APPLIED HERE: Curly braces added around execution blocks
     if (_hasSubmitted) {
-      if (isCorrect) borderColor = Colors.greenAccent;
-      else if (isSelected) borderColor = Colors.redAccent;
+      if (isCorrect) {
+        borderColor = Colors.greenAccent;
+      } else if (isSelected) {
+        borderColor = Colors.redAccent;
+      }
     } else if (isSelected) {
       borderColor = AppTheme.primary;
     }
@@ -245,7 +271,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
 
     return Container(
       padding: const EdgeInsets.all(24.0),
-      color: gotItRight ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      color: gotItRight ? Colors.green.withValues(alpha:0.1) : Colors.red.withValues(alpha:0.1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

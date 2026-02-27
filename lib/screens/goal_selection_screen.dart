@@ -51,17 +51,15 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
   ];
 
   // --- NEW: Backend Logic ---
-  Future<void> _saveGoalAndContinue() async {
-    if (_selectedIndex == null) return;
-    
+  Future<void> _saveGoalAndContinue([String defaultGoal = 'explore']) async {
     setState(() => _isLoading = true);
     try {
       final userId = Supabase.instance.client.auth.currentUser!.id;
-      final selectedGoalId = _goals[_selectedIndex!]['id'];
+      final selectedGoalId = _selectedIndex != null ? _goals[_selectedIndex!]['id'] : defaultGoal;
       
-      // Update the profile in Supabase
+      // FIX: Update the 'users' table, not 'profiles'
       await Supabase.instance.client
-          .from('profiles')
+          .from('users')
           .update({'primary_goal': selectedGoalId})
           .eq('id', userId);
 
@@ -111,8 +109,8 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                     ],
                   ),
                   TextButton(
-                    // Replaced empty comment with route to dashboard
-                    onPressed: () => context.go('/dashboard'),
+                    // Calls the updated function with default argument
+                    onPressed: () => _saveGoalAndContinue('explore'),
                     child: const Text(
                       'Skip',
                       style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
@@ -200,7 +198,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
         color: isActive ? AppTheme.primary : AppTheme.border,
         borderRadius: BorderRadius.circular(2),
         boxShadow: isActive
-            ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 4)]
+            ? [BoxShadow(color: AppTheme.primary.withValues(alpha:0.5), blurRadius: 4)]
             : [],
       ),
     );
@@ -229,7 +227,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: Colors.lightBlueAccent.withOpacity(0.2),
+                  color: Colors.lightBlueAccent.withValues(alpha:0.2),
                   blurRadius: 12,
                   spreadRadius: 2,
                 )
@@ -287,7 +285,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                 color: isSelected ? Colors.lightBlueAccent : AppTheme.border,
                 width: 2,
               ),
-              color: isSelected ? Colors.lightBlueAccent.withOpacity(0.2) : Colors.transparent,
+              color: isSelected ? Colors.lightBlueAccent.withValues(alpha:0.2) : Colors.transparent,
             ),
             child: isSelected
                 ? const Icon(Icons.circle, color: Colors.lightBlueAccent, size: 12)

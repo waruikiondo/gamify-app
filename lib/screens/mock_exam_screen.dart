@@ -4,13 +4,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:confetti/confetti.dart'; // Added for Phase 4 Polish
+import 'package:confetti/confetti.dart'; 
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
-import 'dashboard_screen.dart'; // Imported to access dashboard providers
+import '../services/analytics_service.dart';
 
 final mockQuestionsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return await ref.read(supabaseServiceProvider).getMockExamQuestions(limit: 20); 
+});
+
+// Provider to check if the user is currently on a 24-hour cooldown
+final examEligibilityProvider = FutureProvider.autoDispose<DateTime?>((ref) async {
+  return await ref.read(supabaseServiceProvider).getLastFailedExamTime();
 });
 
 class MockExamScreen extends ConsumerStatefulWidget {
@@ -20,7 +25,8 @@ class MockExamScreen extends ConsumerStatefulWidget {
   ConsumerState<MockExamScreen> createState() => _MockExamScreenState();
 }
 
-class _MockExamScreenState extends ConsumerState<MockExamScreen> {
+// FIX 1: Add WidgetsBindingObserver to listen to the app's lifecycle
+class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final Map<int, int> _selectedAnswers = {}; 
   bool _isSubmitting = false;
@@ -36,24 +42,105 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
   int _remainingSeconds = _examDurationSeconds;
   Timer? _timer;
   
-  // UX Polish: Confetti Controller
   late ConfettiController _confettiController;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    _startTimer();
+    
+    // FIX 2: Register the observer when the screen loads
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    // FIX 3: Clean up the observer when the screen unloads
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _confettiController.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
+  // --- THE ANTI-CHEAT ENGINE ---
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // If the app is sent to the background (user switches apps, minimizes, goes to home screen)
+    if (state == AppLifecycleState.paused) {
+      
+      // If the exam is currently running, punish the backgrounding
+      if (_timer != null && _timer!.isActive && !_isExamFinished && !_isSubmitting) {
+        _triggerAntiCheatPenalty();
+      }
+    }
+  }
+
+  Future<void> _triggerAntiCheatPenalty() async {
+    _timer?.cancel();
+    setState(() => _isSubmitting = true);
+    ref.read(analyticsServiceProvider).trackAntiCheatTriggered();
+
+    final questions = ref.read(mockQuestionsProvider).value ?? [];
+    
+    // Instantly write a 0-score failure to the database to trigger the 24hr cooldown
+    await ref.read(supabaseServiceProvider).saveMockExamResult(
+      score: 0,
+      totalQuestions: questions.length,
+      passed: false,
+      timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSubmitting = false;
+        _isExamFinished = true;
+        _didPass = false;
+        _finalScore = 0;
+        _finalTime = _examDurationSeconds - _remainingSeconds;
+        _weakAreas = ['Exam Protocol Violation']; 
+      });
+      
+      _showAntiCheatDialog();
+    }
+  }
+
+  void _showAntiCheatDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.redAccent, width: 2)),
+        title: const Row(
+          children: [
+            Icon(Icons.gavel, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('ANTI-CHEAT TRIGGERED', style: TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          ],
+        ),
+        content: const Text(
+          'You navigated away from the application during an active Final Boss Exam. This violates exam protocol.\n\nYour exam has been automatically terminated and the 24-hour recovery cooldown has been applied.', 
+          style: TextStyle(color: Colors.white, height: 1.5)
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              ref.invalidate(finalExamStatusProvider);
+              ref.invalidate(examEligibilityProvider);
+              context.pop(); 
+              context.go('/dashboard'); 
+            }, 
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Acknowledge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+          ),
+        ],
+      ),
+    );
+  }
+  // --- END ANTI-CHEAT ENGINE ---
+
+  void _startTimerSafe() {
+    if (_timer != null && _timer!.isActive) return; // Prevent multiple timers
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() => _remainingSeconds--);
@@ -124,6 +211,9 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
       timeTakenSeconds: timeTaken,
     );
 
+    // ---> FIX: THE MISSING ANALYTICS HOOK IS NOW HERE <---
+    ref.read(analyticsServiceProvider).trackExamCompleted(score, passed, timeTaken);
+
     if (mounted) {
       setState(() {
         _isSubmitting = false;
@@ -134,7 +224,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
         _weakAreas = weakAreas;
       });
       
-      // Trigger confetti if they passed
       if (passed) {
         _confettiController.play();
       }
@@ -143,23 +232,91 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final questionsAsync = ref.watch(mockQuestionsProvider);
+    final eligibilityAsync = ref.watch(examEligibilityProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: questionsAsync.when(
+        child: eligibilityAsync.when(
           loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-          error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
-          data: (questions) {
-            if (questions.isEmpty) return const Center(child: Text('No mock exam questions available.', style: TextStyle(color: Colors.white)));
-
-            if (_isExamFinished) {
-              return _buildResultsScreen(questions.length);
+          error: (err, stack) => Center(child: Text('Error checking eligibility: $err', style: const TextStyle(color: Colors.redAccent))),
+          data: (lastFailedTime) {
+            
+            // Check Cooldown Logic (24 Hours)
+            if (lastFailedTime != null) {
+              final cooldownEnd = lastFailedTime.add(const Duration(hours: 24));
+              final now = DateTime.now();
+              if (now.isBefore(cooldownEnd)) {
+                return _buildCooldownScreen(cooldownEnd.difference(now));
+              }
             }
 
-            return _buildActiveExam(questions);
+            // User is eligible, load the questions
+            final questionsAsync = ref.watch(mockQuestionsProvider);
+            return questionsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+              error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
+              data: (questions) {
+                if (questions.isEmpty) return const Center(child: Text('No mock exam questions available.', style: TextStyle(color: Colors.white)));
+
+                if (_isExamFinished) {
+                  return _buildResultsScreen(questions.length);
+                }
+
+                // Start timer safely only when questions are actively rendered
+                WidgetsBinding.instance.addPostFrameCallback((_) => _startTimerSafe());
+
+                return _buildActiveExam(questions);
+              },
+            );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCooldownScreen(Duration timeLeft) {
+    final hours = timeLeft.inHours;
+    final minutes = timeLeft.inMinutes % 60;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_clock, size: 80, color: Colors.redAccent),
+            const SizedBox(height: 24),
+            const Text(
+              'RECOVERY PERIOD',
+              style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'You must wait before attempting the Final Exam again. Use this time to review your weak areas in the previous chapters.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 16, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Text(
+                'Unlocks in $hours hr $minutes min',
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () => context.pop(),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              child: const Text('Return to Dashboard'),
+            ),
+          ],
         ),
       ),
     );
@@ -187,7 +344,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: _didPass ? Colors.greenAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+                          color: _didPass ? Colors.greenAccent.withValues(alpha:0.1) : Colors.redAccent.withValues(alpha:0.1),
                           shape: BoxShape.circle,
                           border: Border.all(color: _didPass ? Colors.greenAccent : Colors.redAccent, width: 4),
                         ),
@@ -240,6 +397,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
                         ),
                         const Text('AREAS TO REVIEW', style: TextStyle(color: AppTheme.textGrey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                         const SizedBox(height: 16),
+                        
                         ..._weakAreas.map((skill) => Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
                           child: Row(
@@ -249,7 +407,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
                               Expanded(child: Text(skill, style: const TextStyle(color: Colors.white, fontSize: 16))),
                             ],
                           ),
-                        )).toList(),
+                        )),
                       ]
                     ],
                   ),
@@ -316,11 +474,11 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(icon: const Icon(Icons.close, color: AppTheme.textGrey), onPressed: () => _showExitWarning()),
+              IconButton(icon: const Icon(Icons.close, color: AppTheme.textGrey), onPressed: () => _showExitWarning(questions.length)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: _remainingSeconds < 300 ? Colors.redAccent.withOpacity(0.2) : AppTheme.surface,
+                  color: _remainingSeconds < 300 ? Colors.redAccent.withValues(alpha:0.2) : AppTheme.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: _remainingSeconds < 300 ? Colors.redAccent : AppTheme.border),
                 ),
@@ -352,7 +510,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primary.withOpacity(0.1) : AppTheme.surface,
+                        color: isSelected ? AppTheme.primary.withValues(alpha:0.1) : AppTheme.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border, width: 2),
                       ),
@@ -375,7 +533,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
         ),
         Container(
           padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(color: AppTheme.background, border: Border(top: BorderSide(color: AppTheme.border.withOpacity(0.5)))),
+          decoration: BoxDecoration(color: AppTheme.background, border: Border(top: BorderSide(color: AppTheme.border.withValues(alpha:0.5)))),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -397,20 +555,36 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
     );
   }
 
-  void _showExitWarning() {
+  void _showExitWarning(int totalQuestions) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
         title: const Text('Abandon Exam?'),
-        content: const Text('Your progress will be lost and this will count as a failed attempt.', style: TextStyle(color: AppTheme.textGrey)),
+        content: const Text(
+          'Your progress will be lost and this will trigger a 24-hour cooldown penalty.', 
+          style: TextStyle(color: AppTheme.textGrey)
+        ),
         actions: [
           TextButton(onPressed: () => context.pop(), child: const Text('Cancel', style: TextStyle(color: AppTheme.textGrey))),
-          TextButton(onPressed: () {
-            _timer?.cancel();
-            context.pop(); 
-            context.go('/dashboard'); 
-          }, child: const Text('Abandon', style: TextStyle(color: Colors.redAccent))),
+          TextButton(
+            onPressed: () async {
+              _timer?.cancel();
+              
+              await ref.read(supabaseServiceProvider).saveMockExamResult(
+                score: 0,
+                totalQuestions: totalQuestions,
+                passed: false,
+                timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
+              );
+              
+              if (context.mounted) {
+                context.pop(); 
+                context.go('/dashboard'); 
+              }
+            }, 
+            child: const Text('Abandon', style: TextStyle(color: Colors.redAccent))
+          ),
         ],
       ),
     );

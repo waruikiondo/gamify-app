@@ -122,7 +122,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(32),
- border: Border.all(color: AppTheme.border.withOpacity(0.5)),       ),
+ border: Border.all(color: AppTheme.border.withValues(alpha:0.5)),       ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -131,7 +131,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.primary.withOpacity(0.2)),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.primary.withValues(alpha:0.2)),
                   child: const Icon(Icons.email, color: AppTheme.primary, size: 48),
                 ),
                 Container(

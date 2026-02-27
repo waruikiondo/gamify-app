@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme.dart';
-import '../services/supabase_service.dart'; // Added to check admin status
-import 'dashboard_screen.dart'; // To access the cert provider
+import '../services/supabase_service.dart'; 
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -20,7 +19,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _handleSecretTap() async {
     final now = DateTime.now();
-    // Reset if they tap too slowly (more than 1 second between taps)
     if (_lastTap != null && now.difference(_lastTap!).inSeconds > 1) {
       _tapCount = 0; 
     }
@@ -29,9 +27,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _tapCount++;
 
     if (_tapCount == 5) {
-      _tapCount = 0; // Reset after triggering
+      _tapCount = 0; 
       
-      // Show loading while verifying admin status
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Verifying clearance...'), 
@@ -57,11 +54,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch Auth state to keep the name updated instantly
     final user = Supabase.instance.client.auth.currentUser;
     final fullName = user?.userMetadata?['full_name'] as String? ?? 'Agent';
     final email = user?.email ?? 'Unknown Email';
     
-    // Check if they have the cert
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
     final bool hasPassedFinal = hasPassedExamAsync.value ?? false;
 
@@ -72,7 +69,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         elevation: 0,
         centerTitle: true,
         title: GestureDetector(
-          onTap: _handleSecretTap, // <-- THE SECRET ENTRANCE
+          onTap: _handleSecretTap, 
           child: const Text(
             'PROFILE', 
             style: TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 1.5, fontWeight: FontWeight.bold)
@@ -85,7 +82,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             const SizedBox(height: 24),
             
-            // --- USER INFO (NO PICTURE) ---
+            // --- USER INFO ---
             Text(fullName, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(email, style: const TextStyle(color: AppTheme.textGrey, fontSize: 16)),
@@ -104,6 +101,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 40),
             
             // --- SETTINGS / ACTIONS ---
+            _buildActionTile(Icons.person_outline, 'Edit Profile', () => _showEditProfile(context, fullName)),
+            const SizedBox(height: 8),
+            _buildActionTile(Icons.track_changes, 'Change Primary Goal', () => context.push('/goal-selection')),
+            const SizedBox(height: 8),
             _buildActionTile(Icons.notifications_none, 'Notifications', () => _showNotifications(context)),
             const SizedBox(height: 8),
             _buildActionTile(Icons.security, 'Privacy & Security', () => _showPrivacySecurity(context)),
@@ -112,7 +113,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             const SizedBox(height: 40),
             
-            // --- EXACT MATCH SIGN OUT BUTTON ---
+            // --- SIGN OUT BUTTON ---
             ElevatedButton.icon(
               onPressed: () async {
                 await Supabase.instance.client.auth.signOut();
@@ -121,12 +122,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               icon: const Icon(Icons.logout, color: Colors.redAccent),
               label: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent, // Dark background
+                backgroundColor: Colors.transparent, 
                 elevation: 0,
                 minimumSize: const Size(double.infinity, 56),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Colors.redAccent, width: 1.5), // Red Outline
+                  side: const BorderSide(color: Colors.redAccent, width: 1.5), 
                 ),
               ),
             )
@@ -170,6 +171,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // --- INTERACTIVE BOTTOM SHEETS ---
 
+  void _showEditProfile(BuildContext context, String currentName) {
+    final TextEditingController nameController = TextEditingController(text: currentName);
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, 
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              left: 24, right: 24, top: 24
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    labelStyle: const TextStyle(color: AppTheme.textGrey),
+                    enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: AppTheme.border), borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: AppTheme.primary), borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: isSaving ? null : () async {
+                    if (nameController.text.trim().isEmpty) return;
+                    setModalState(() => isSaving = true);
+                    
+                    try {
+                      await ref.read(supabaseServiceProvider).updateUserName(nameController.text.trim());
+                      ref.invalidate(userProfileProvider); 
+                      
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        setState(() {}); 
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green));
+                      }
+                    } catch (e) {
+                      setModalState(() => isSaving = false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, minimumSize: const Size(double.infinity, 50)),
+                  child: isSaving 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+  }
+
   void _showNotifications(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -187,14 +255,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: const Text('Exam Reminders', style: TextStyle(color: Colors.white)),
               subtitle: const Text('Get notified to complete your daily training.', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
               value: true,
-              activeColor: AppTheme.primary,
+              activeThumbColor: AppTheme.primary, // FIX APPLIED HERE
               onChanged: (val) {},
             ),
             SwitchListTile(
               title: const Text('Leaderboard Updates', style: TextStyle(color: Colors.white)),
               subtitle: const Text('Alerts when your global percentile changes.', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
               value: false,
-              activeColor: AppTheme.primary,
+              activeThumbColor: AppTheme.primary, // FIX APPLIED HERE
               onChanged: (val) {},
             ),
             const SizedBox(height: 24),

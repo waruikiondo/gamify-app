@@ -1,33 +1,35 @@
 class Level {
-  final String id; //
-  final String title; //
-  final int order; //
-  final String? description; //
+  final String id;
+  final String title;
+  final String? description;
+  final int levelOrder;
+  final int passingPercentage;
 
   Level({
     required this.id,
     required this.title,
-    required this.order,
     this.description,
+    required this.levelOrder,
+    required this.passingPercentage,
   });
 
-  // Creates a Level object from Supabase JSON
   factory Level.fromJson(Map<String, dynamic> json) {
     return Level(
       id: json['id'].toString(),
       title: json['title'] as String,
-      order: json['order'] as int,
       description: json['description'] as String?,
+      levelOrder: json['level_order'] as int,
+      passingPercentage: json['passing_percentage'] as int? ?? 80,
     );
   }
 
-  // Converts a Level object back to JSON for Supabase inserts/updates
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'title': title,
-      'order': order,
       'description': description,
+      'level_order': levelOrder,
+      'passing_percentage': passingPercentage,
     };
   }
 }

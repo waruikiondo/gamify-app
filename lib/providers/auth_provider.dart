@@ -28,8 +28,10 @@ class AuthNotifier extends Notifier<AuthState> {
     
     // Check if the user is already logged in when the app starts
     final session = _supabase.auth.currentSession;
-    if (session != null && session.user != null) {
-      return AuthAuthenticated(session.user!);
+    
+    // FIX APPLIED: Removed unnecessary null check on session.user
+    if (session != null) {
+      return AuthAuthenticated(session.user);
     }
     
     // Default starting state

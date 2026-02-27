@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Added Supabase import
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -28,7 +29,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final authState = ref.read(authProvider);
     
     if (authState is AuthAuthenticated) {
-      context.go('/dashboard');
+      try {
+        final userId = Supabase.instance.client.auth.currentUser!.id;
+        
+        // Fetch the user's public record
+        final userData = await Supabase.instance.client
+            .from('users')
+            .select('primary_goal')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        // The Gate: If primary_goal is null, force onboarding. Otherwise, dashboard.
+        if (userData == null || userData['primary_goal'] == null) {
+          context.go('/goal-selection');
+        } else {
+          context.go('/dashboard');
+        }
+      } catch (e) {
+        // Fallback to goal selection if something goes wrong
+        if (mounted) context.go('/goal-selection');
+      }
     } else {
       context.go('/login');
     }
@@ -51,7 +73,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.5),
+                    color: AppTheme.primary.withValues(alpha:0.5),
                     blurRadius: 40,
                     spreadRadius: 10,
                   ),

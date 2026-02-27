@@ -51,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.primary,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.4), blurRadius: 30, spreadRadius: 2)],
+                  boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha:0.4), blurRadius: 30, spreadRadius: 2)],
                 ),
                 child: const Center(child: Text('G', style: TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold))),
               ),

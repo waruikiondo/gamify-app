@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
-import 'widgets/custom_text_field.dart';
+// Note: Removed custom_text_field import as we are building custom premium inputs inline
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -29,6 +29,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     });
   }
 
+  // --- LOGIC REMAINS COMPLETELY UNTOUCHED ---
   void _evaluatePasswordStrength(String password) {
     if (password.isEmpty) {
       setState(() => _passwordStrength = 0);
@@ -36,14 +37,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
 
     int strength = 0;
-    // 1. Basic length check
     if (password.length >= 6) strength += 1; 
-    // 2. Contains both uppercase and lowercase letters
     if (RegExp(r'(?=.*[a-z])(?=.*[A-Z])').hasMatch(password)) strength += 1; 
-    // 3. Contains at least one number or special character
     if (RegExp(r'(?=.*\d)|(?=.*[^a-zA-Z\d])').hasMatch(password)) strength += 1; 
 
-    // Ensure it shows at least "Weak" if they type something short
     if (password.isNotEmpty && strength == 0) strength = 1;
 
     setState(() => _passwordStrength = strength);
@@ -57,7 +54,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     super.dispose();
   }
 
-  // Helper method to get the correct text label
   String get _strengthLabel {
     switch (_passwordStrength) {
       case 1: return 'WEAK';
@@ -67,16 +63,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
-  // Helper method to get the correct text color
   Color get _strengthColor {
     switch (_passwordStrength) {
       case 1: return Colors.redAccent;
-      case 2: return Colors.orangeAccent;
+      case 2: return Colors.amber;
       case 3: return Colors.greenAccent;
       default: return Colors.transparent;
     }
   }
 
+  // --- NEW PREMIUM UI APPLIED HERE ---
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -90,180 +86,329 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-          onPressed: () => context.pop(),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1E1A3A), Color(0xFF0A0F14)], // Deep dark gamified background
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        title: const Text('Step 1 of 3', style: TextStyle(color: Colors.white, fontSize: 16)),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            // Header Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E1E3F), Color(0xFF3B1E54)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar matching the screenshot
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF131B24),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
+                        onPressed: () => context.pop(),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text('Sign Up', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(8)),
-                    child: const Text('NEW SEASON', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Join the Quest', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Start your professional certification journey today and unlock elite rewards.', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
-            const SizedBox(height: 32),
-            
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppTheme.border.withValues(alpha:0.5)),
-              ),
-              child: Column(
-                children: [
-                  CustomTextField(
-                    controller: _nameController, 
-                    label: 'Full Name', 
-                    hint: 'Alex Rivers'
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _emailController, 
-                    label: 'Email Address', 
-                    hint: 'alex@quest.edu'
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hint: '••••••••••••',
-                    isPassword: _obscurePassword,
-                    trailing: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textGrey),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // --- DYNAMIC PASSWORD STRENGTH UI ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('PASSWORD STRENGTH', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-                      Text(
-                        _strengthLabel, 
-                        style: TextStyle(color: _strengthColor, fontSize: 10, fontWeight: FontWeight.bold)
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 4, 
-                          decoration: BoxDecoration(
-                            // Bar 1 lights up red if strength is >= 1
-                            color: _passwordStrength >= 1 ? Colors.redAccent : AppTheme.border.withValues(alpha:0.3), 
-                            borderRadius: BorderRadius.circular(2)
-                          )
-                        )
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Container(
-                          height: 4, 
-                          decoration: BoxDecoration(
-                            // Bar 2 lights up orange if strength is >= 2
-                            color: _passwordStrength >= 2 ? Colors.orangeAccent : AppTheme.border.withValues(alpha:0.3), 
-                            borderRadius: BorderRadius.circular(2)
-                          )
-                        )
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Container(
-                          height: 4, 
-                          decoration: BoxDecoration(
-                            // Bar 3 lights up green if strength is 3
-                            color: _passwordStrength == 3 ? Colors.greenAccent : AppTheme.border.withValues(alpha:0.3), 
-                            borderRadius: BorderRadius.circular(2)
-                          )
-                        )
-                      ),
-                    ],
-                  ),
-                  // ------------------------------------
-                  
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: authState is AuthLoading ? null : () {
-                      ref.read(authProvider.notifier).signUp(
-                        email: _emailController.text.trim(),
-                        password: _passwordController.text.trim(),
-                        fullName: _nameController.text.trim(),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: authState is AuthLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                              SizedBox(width: 8),
-                              Icon(Icons.bolt, size: 20, color: Colors.white),
-                            ],
+                      const SizedBox(height: 16),
+                      
+                      // Abstract Neon Header Card
+                      Container(
+                        width: double.infinity,
+                        height: 140,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          // Simulating the neon wave graphic from the Figma design
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B1E54), Color(0xFF00BFFF), Color(0xFF1E1A3A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            Center(
-              child: GestureDetector(
-                onTap: () => context.pop(),
-                child: RichText(
-                  text: const TextSpan(
-                    text: "Already have an account? ",
-                    style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
-                    children: [TextSpan(text: 'Log In', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold))],
+                          boxShadow: [
+                            BoxShadow(color: const Color(0xFF00BFFF).withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)
+                          ]
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF8A2BE2), // Vibrant Purple tag
+                                borderRadius: BorderRadius.circular(12)
+                              ),
+                              child: const Text('NEW SEASON', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text('Join the Quest', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Start your professional certification journey today and unlock elite rewards.', 
+                        style: TextStyle(color: AppTheme.textGrey, fontSize: 14, height: 1.5)
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Form Container
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF131B24).withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(color: AppTheme.border.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildPremiumTextField(
+                              controller: _nameController, 
+                              label: 'FULL NAME', 
+                              hint: 'Alex Rivers'
+                            ),
+                            const SizedBox(height: 20),
+                            _buildPremiumTextField(
+                              controller: _emailController, 
+                              label: 'EMAIL ADDRESS', 
+                              hint: 'alex@quest.edu'
+                            ),
+                            const SizedBox(height: 20),
+                            _buildPremiumTextField(
+                              controller: _passwordController,
+                              label: 'PASSWORD',
+                              hint: 'StrongPassword123!',
+                              isPassword: _obscurePassword,
+                              trailing: IconButton(
+                                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textGrey),
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            // --- DYNAMIC PASSWORD STRENGTH UI ---
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('PASSWORD STRENGTH', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                                Text(
+                                  _strengthLabel, 
+                                  style: TextStyle(color: _strengthColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 4, 
+                                    decoration: BoxDecoration(
+                                      color: _passwordStrength >= 1 ? Colors.redAccent : AppTheme.border.withValues(alpha: 0.3), 
+                                      borderRadius: BorderRadius.circular(2)
+                                    )
+                                  )
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Container(
+                                    height: 4, 
+                                    decoration: BoxDecoration(
+                                      color: _passwordStrength >= 2 ? Colors.amber : AppTheme.border.withValues(alpha: 0.3), 
+                                      borderRadius: BorderRadius.circular(2)
+                                    )
+                                  )
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Container(
+                                    height: 4, 
+                                    decoration: BoxDecoration(
+                                      color: _passwordStrength == 3 ? Colors.greenAccent : AppTheme.border.withValues(alpha: 0.3), 
+                                      borderRadius: BorderRadius.circular(2),
+                                      boxShadow: _passwordStrength == 3 ? [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.5), blurRadius: 8)] : null,
+                                    )
+                                  )
+                                ),
+                              ],
+                            ),
+                            // ------------------------------------
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Glowing Purple Button
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF8A2BE2), Color(0xFF5D3FD3)], // Vibrant Purple
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF8A2BE2).withValues(alpha: 0.5),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ]
+                              ),
+                              child: ElevatedButton(
+                                onPressed: authState is AuthLoading ? null : () {
+                                  ref.read(authProvider.notifier).signUp(
+                                    email: _emailController.text.trim(),
+                                    password: _passwordController.text.trim(),
+                                    fullName: _nameController.text.trim(),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  minimumSize: const Size(double.infinity, 56),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                ),
+                                child: authState is AuthLoading
+                                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                                          SizedBox(width: 8),
+                                          Icon(Icons.bolt, size: 20, color: Colors.white),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Social Divider
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: AppTheme.border.withValues(alpha: 0.3))),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text('OR SIGN UP WITH', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                                ),
+                                Expanded(child: Divider(color: AppTheme.border.withValues(alpha: 0.3))),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Social Circular Buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildSocialIconButton(Icons.apple),
+                                const SizedBox(width: 16),
+                                _buildSocialIconButton(Icons.g_mobiledata, iconSize: 32),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => context.pop(),
+                          child: RichText(
+                            text: const TextSpan(
+                              text: "Already have an account? ",
+                              style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+                              children: [
+                                TextSpan(text: 'Log In', style: TextStyle(color: Color(0xFF8A2BE2), fontWeight: FontWeight.bold))
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  // Helper widget to build the premium input fields that match the Figma design
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    bool isPassword = false,
+    Widget? trailing,
+  }) {
+    return Container(
+      padding: const EdgeInsets.only(left: 20, right: 8, top: 12, bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.transparent, // Transparent to show the container background
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFF8A2BE2), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  obscureText: isPassword,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: TextStyle(color: AppTheme.textGrey.withValues(alpha: 0.3)),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper widget for the circular social buttons
+  Widget _buildSocialIconButton(IconData icon, {double iconSize = 24}) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: const Color(0xFF131B24),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.3)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white, size: iconSize),
+        onPressed: () {},
       ),
     );
   }

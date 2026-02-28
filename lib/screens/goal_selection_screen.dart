@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Added Riverpod
 import '../core/theme.dart';
+import '../providers/global_providers.dart'; // Added to refresh the leaderboard
 
-class GoalSelectionScreen extends StatefulWidget {
+// Changed to ConsumerStatefulWidget to access Riverpod
+class GoalSelectionScreen extends ConsumerStatefulWidget {
   const GoalSelectionScreen({super.key});
 
   @override
-  State<GoalSelectionScreen> createState() => _GoalSelectionScreenState();
+  ConsumerState<GoalSelectionScreen> createState() => _GoalSelectionScreenState();
 }
 
-class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
+class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
   int? _selectedIndex;
-  bool _isLoading = false; // Added loading state
+  bool _isLoading = false; 
 
-  // Added 'id' to map to the database
+  // Updated titles to match your gamified roles!
   final List<Map<String, dynamic>> _goals = [
     {
       'id': 'certified',
       'icon': Icons.verified_outlined,
-      'title': 'Get Certified',
+      'title': 'CLOUD ARCHITECT',
       'subtitle': 'Earn recognized credentials to boost your resume.',
       'iconColor': Colors.purpleAccent,
       'bgColor': const Color(0xFF2E1A47),
@@ -27,7 +30,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
     {
       'id': 'skills',
       'icon': Icons.psychology_outlined,
-      'title': 'Master New Skills',
+      'title': 'CYBER SPECIALIST',
       'subtitle': 'Deepen your technical knowledge in specific areas.',
       'iconColor': Colors.tealAccent,
       'bgColor': const Color(0xFF1A3B3A),
@@ -35,7 +38,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
     {
       'id': 'pivot',
       'icon': Icons.rocket_launch_outlined,
-      'title': 'Career Pivot',
+      'title': 'DATA SCIENTIST',
       'subtitle': 'Transition to a new role or industry entirely.',
       'iconColor': Colors.orangeAccent,
       'bgColor': const Color(0xFF4A2B1A),
@@ -43,25 +46,31 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
     {
       'id': 'explore',
       'icon': Icons.explore_outlined,
-      'title': 'Just Exploring',
+      'title': 'ACADEMY AGENT',
       'subtitle': 'Browsing courses without a specific end goal.',
       'iconColor': Colors.pinkAccent,
       'bgColor': const Color(0xFF4A1A31),
     },
   ];
 
-  // --- NEW: Backend Logic ---
-  Future<void> _saveGoalAndContinue([String defaultGoal = 'explore']) async {
+  // --- UPDATED: Backend Logic ---
+  Future<void> _saveGoalAndContinue([String defaultGoalTitle = 'ACADEMY AGENT']) async {
     setState(() => _isLoading = true);
     try {
       final userId = Supabase.instance.client.auth.currentUser!.id;
-      final selectedGoalId = _selectedIndex != null ? _goals[_selectedIndex!]['id'] : defaultGoal;
       
-      // FIX: Update the 'users' table, not 'profiles'
+      // We now save the actual TITLE so it looks good on the Leaderboard
+      final selectedTitle = _selectedIndex != null ? _goals[_selectedIndex!]['title'] : defaultGoalTitle;
+      
+      // FIX: Changed 'users' to 'profiles' so it syncs with the rest of the app
       await Supabase.instance.client
-          .from('users')
-          .update({'primary_goal': selectedGoalId})
+          .from('profiles')
+          .update({'primary_goal': selectedTitle})
           .eq('id', userId);
+
+      // Tell the app to refresh the user's profile and the leaderboard
+      ref.invalidate(userProfileProvider);
+      ref.invalidate(leaderboardProvider);
 
       if (mounted) context.go('/dashboard');
     } catch (e) {
@@ -91,12 +100,10 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    // Replaced Navigator with GoRouter
                     onPressed: () => context.pop(), 
                     padding: EdgeInsets.zero,
                     alignment: Alignment.centerLeft,
                   ),
-                  // Progress Indicator (Step 1 of 4)
                   Row(
                     children: [
                       _buildProgressSegment(isActive: true),
@@ -109,8 +116,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                     ],
                   ),
                   TextButton(
-                    // Calls the updated function with default argument
-                    onPressed: () => _saveGoalAndContinue('explore'),
+                    onPressed: () => _saveGoalAndContinue('ACADEMY AGENT'),
                     child: const Text(
                       'Skip',
                       style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
@@ -166,7 +172,6 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
 
               // Continue Button
               ElevatedButton(
-                // Hooked up the new async function here
                 onPressed: _selectedIndex != null && !_isLoading ? _saveGoalAndContinue : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _selectedIndex != null ? AppTheme.primary : AppTheme.border,
@@ -189,7 +194,6 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
     );
   }
 
-  // Helper widget for the custom progress bar at the top
   Widget _buildProgressSegment({required bool isActive}) {
     return Container(
       width: 24,
@@ -198,13 +202,12 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
         color: isActive ? AppTheme.primary : AppTheme.border,
         borderRadius: BorderRadius.circular(2),
         boxShadow: isActive
-            ? [BoxShadow(color: AppTheme.primary.withValues(alpha:0.5), blurRadius: 4)]
+            ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 4)]
             : [],
       ),
     );
   }
 
-  // Helper widget for the selectable cards
   Widget _buildGoalCard({
     required String title,
     required String subtitle,
@@ -218,7 +221,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF181622), // Slightly lighter than background
+        color: const Color(0xFF181622), 
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isSelected ? Colors.lightBlueAccent : AppTheme.border,
@@ -227,7 +230,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: Colors.lightBlueAccent.withValues(alpha:0.2),
+                  color: Colors.lightBlueAccent.withOpacity(0.2),
                   blurRadius: 12,
                   spreadRadius: 2,
                 )
@@ -236,7 +239,6 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
       ),
       child: Row(
         children: [
-          // Icon Container
           Container(
             height: 48,
             width: 48,
@@ -247,8 +249,6 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 16),
-          
-          // Text Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,8 +274,6 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Custom Radio Button Indicator
           Container(
             height: 24,
             width: 24,
@@ -285,7 +283,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
                 color: isSelected ? Colors.lightBlueAccent : AppTheme.border,
                 width: 2,
               ),
-              color: isSelected ? Colors.lightBlueAccent.withValues(alpha:0.2) : Colors.transparent,
+              color: isSelected ? Colors.lightBlueAccent.withOpacity(0.2) : Colors.transparent,
             ),
             child: isSelected
                 ? const Icon(Icons.circle, color: Colors.lightBlueAccent, size: 12)

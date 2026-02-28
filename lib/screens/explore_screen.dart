@@ -133,6 +133,7 @@ class ExploreScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     if (!isLocked && !isCompleted)
                       ElevatedButton(
+                        // VERIFIED: This correctly routes to the new Overview Screen
                         onPressed: () => context.push('/level/$levelId'),
                         child: const Text('Start Chapter'),
                       ),
@@ -168,7 +169,6 @@ class ExploreScreen extends ConsumerWidget {
                   size: 16, color: nodeColor,
                 ),
               ),
-              // We omit the vertical line completely here because this is the absolute end of the timeline!
             ],
           ),
           const SizedBox(width: 24),
@@ -205,7 +205,6 @@ class ExploreScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Button if Unlocked but not yet passed
                     if (isUnlocked && !hasPassed)
                       ElevatedButton(
                         onPressed: () => context.push('/mock-exam'),
@@ -220,7 +219,6 @@ class ExploreScreen extends ConsumerWidget {
                         ),
                       ),
                       
-                    // Optional: A 'Retake' button if they already passed but want to practice
                     if (hasPassed)
                        ElevatedButton(
                         onPressed: () => context.push('/mock-exam'),

@@ -10,7 +10,7 @@ import 'explore_screen.dart';
 import 'rank_screen.dart';     
 import 'profile_screen.dart';  
 
-// --- NEW PDF IMPORTS ---
+// --- PDF IMPORTS ---
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -202,7 +202,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                     // CERTIFICATE OR UP NEXT CARD
                     if (hasPassedFinal)
-                      _buildCertificateCard(context, fullName) // PASSING FULL NAME HERE
+                      _buildCertificateCard(context, fullName) 
                     else
                       Container(
                         padding: const EdgeInsets.all(24),
@@ -409,7 +409,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // --- UPDATED: Pass the fullName into the card ---
   Widget _buildCertificateCard(BuildContext context, String fullName) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -444,7 +443,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            // Pass the fullName to the dialog
             onPressed: () => _showCertificateDialog(context, fullName), 
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,
@@ -464,8 +462,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // --- UPDATED: Added Download Button to Dialog ---
- // --- UPDATED: Fixed the Infinite Width Theme Clash ---
   void _showCertificateDialog(BuildContext context, String fullName) {
     showDialog(
       context: context,
@@ -485,7 +481,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const Text('Has successfully passed the Final Boss Mock Exam and demonstrated mastery in the subject matter.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
           ],
         ),
-        // FIX 1: Use the native actions property for dialog buttons
         actionsAlignment: MainAxisAlignment.center,
         actionsPadding: const EdgeInsets.only(bottom: 24),
         actions: [
@@ -495,12 +490,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              _downloadCertificate(fullName); // Trigger PDF generation
+              Navigator.pop(context); 
+              _downloadCertificate(fullName); 
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,
-              // FIX 2: Override any global "double.infinity" themes!
               minimumSize: const Size(0, 48), 
             ),
             child: const Row(
@@ -517,7 +511,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // --- NEW: PDF Generation Logic ---
   Future<void> _downloadCertificate(String userName) async {
     ref.read(analyticsServiceProvider).trackCertificateDownloaded(userName);
     final pdf = pw.Document();
@@ -560,7 +553,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
 
-    // This handles both Web downloading and Mobile printing/saving natively!
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Cloud_Architect_Certificate_$userName.pdf',
@@ -613,7 +605,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildNavItem(Icons.home_filled, 'Home', 0),
           _buildNavItem(Icons.explore_outlined, 'Explore', 1),
           
-          // --- THE FUNCTIONAL PLAY BUTTON ---
           GestureDetector(
             onTap: () {
               final journeyData = ref.read(userJourneyProvider).value;

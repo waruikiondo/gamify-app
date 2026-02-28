@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
-import 'widgets/custom_text_field.dart';
+// Note: Removed CustomTextField import as we are using customized premium inputs inline
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -24,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  // --- LOGIC REMAINS COMPLETELY UNTOUCHED ---
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -36,149 +37,259 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
+    // --- NEW PREMIUM UI APPLIED HERE ---
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha:0.4), blurRadius: 30, spreadRadius: 2)],
-                ),
-                child: const Center(child: Text('G', style: TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold))),
-              ),
-              const SizedBox(height: 24),
-              const Text('Welcome Back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 8),
-              const Text('Level up your professional journey', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
-              const SizedBox(height: 48),
-              
-              CustomTextField(
-                controller: _emailController,
-                label: 'Work Email',
-                hint: 'name@company.com',
-                icon: Icons.email_outlined,
-              ),
-              const SizedBox(height: 24),
-              
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  CustomTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hint: '••••••••',
-                    icon: Icons.lock_outline,
-                    isPassword: _obscurePassword,
-                    trailing: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textGrey),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1E1A3A), Color(0xFF0A0F14)], // Deep purple to black
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                
+                // Stylized Glowing Logo (Matching Splash Screen)
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Colors.cyanAccent, AppTheme.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/forgot-password'),
-                    child: const Text('Forgot Password?', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              ElevatedButton(
-                onPressed: authState is AuthLoading ? null : () {
-                  ref.read(authProvider.notifier).signIn(
-                    email: _emailController.text.trim(),
-                    password: _passwordController.text.trim(),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: authState is AuthLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text('Enter Platform', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                          SizedBox(width: 8),
-                          Icon(Icons.bolt, size: 20, color: Colors.white),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.5),
+                        blurRadius: 40,
+                        spreadRadius: 5,
                       ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              Row(
-                children: [
-                  Expanded(child: Divider(color: AppTheme.border)),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('OR CONTINUE WITH', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  Expanded(child: Divider(color: AppTheme.border)),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.apple, color: Colors.white),
-                      label: const Text('Apple', style: TextStyle(color: Colors.white)),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppTheme.border),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 30), 
-                      label: const Text('Google', style: TextStyle(color: Colors.white)),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppTheme.border),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
-              GestureDetector(
-                onTap: () => context.push('/signup'),
-                child: RichText(
-                  text: const TextSpan(
-                    text: "Don't have an account? ",
-                    style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
-                    children: [
-                      TextSpan(text: 'Join the Academy', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
                     ],
                   ),
+                  child: Container(
+                    margin: const EdgeInsets.all(3), 
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0A0F14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'G',
+                        style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                
+                const SizedBox(height: 32),
+                const Text('WELCOME BACK', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                const SizedBox(height: 8),
+                const Text('Level up your professional journey', style: TextStyle(color: Colors.cyanAccent, fontSize: 12, letterSpacing: 1.0)),
+                const SizedBox(height: 48),
+                
+                // Premium Email Field
+                _buildPremiumTextField(
+                  controller: _emailController,
+                  label: 'Work Email',
+                  hint: 'agent@gamify.com',
+                  icon: Icons.email_outlined,
+                ),
+                const SizedBox(height: 24),
+                
+                // Premium Password Field
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _buildPremiumTextField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hint: '••••••••',
+                      icon: Icons.lock_outline,
+                      isPassword: _obscurePassword,
+                      trailing: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppTheme.textGrey),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.push('/forgot-password'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.cyanAccent,
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Glowing Gradient Login Button
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Colors.cyanAccent, AppTheme.primary],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      )
+                    ]
+                  ),
+                  child: ElevatedButton(
+                    onPressed: authState is AuthLoading ? null : () {
+                      ref.read(authProvider.notifier).signIn(
+                        email: _emailController.text.trim(),
+                        password: _passwordController.text.trim(),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent, // Let the gradient show through
+                      shadowColor: Colors.transparent,
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: authState is AuthLoading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('ENTER PLATFORM', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: 1.5)),
+                              SizedBox(width: 8),
+                              Icon(Icons.bolt, size: 20, color: Colors.black),
+                            ],
+                          ),
+                  ),
+                ),
+                
+                const SizedBox(height: 40),
+                
+                // Social Login Divider
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppTheme.border.withValues(alpha: 0.5))),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('OR INITIATE WITH', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                    ),
+                    Expanded(child: Divider(color: AppTheme.border.withValues(alpha: 0.5))),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Social Login Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.apple, color: Colors.white),
+                        label: const Text('Apple', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFF131B24),
+                          side: BorderSide(color: AppTheme.border.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 28), 
+                        label: const Text('Google', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFF131B24),
+                          side: BorderSide(color: AppTheme.border.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 40),
+
+                // Join Academy Link
+                GestureDetector(
+                  onTap: () => context.push('/signup'),
+                  child: RichText(
+                    text: const TextSpan(
+                      text: "Don't have an access key? ",
+                      style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+                      children: [
+                        TextSpan(text: 'Join the Academy', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  // Helper widget to build the premium input fields
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    Widget? trailing,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: isPassword,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: AppTheme.textGrey.withValues(alpha: 0.5)),
+            prefixIcon: Icon(icon, color: Colors.cyanAccent.withValues(alpha: 0.7)),
+            suffixIcon: trailing,
+            filled: true,
+            fillColor: const Color(0xFF131B24), // Darker inner fill
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppTheme.border.withValues(alpha: 0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.cyanAccent, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

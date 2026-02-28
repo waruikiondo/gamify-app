@@ -235,7 +235,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const SizedBox(height: 16),
 
           // --- OPTIONS ---
-          // FIX APPLIED: Wrapped all options in the new RadioGroup widget
           RadioGroup<String>(
             groupValue: _correctOptionValue,
             onChanged: (val) => setState(() => _correctOptionValue = val),
@@ -264,7 +263,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     );
   }
 
-  // FIX APPLIED: Removed the deprecated groupValue and onChanged from the individual Radio widget
   Widget _buildOptionRow(TextEditingController controller, String hint) {
     return Row(
       children: [
@@ -350,32 +348,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hintResolving dependencies... 
-Downloading packages... 
-  _fe_analyzer_shared 91.0.0 (96.0.0 available)
-  analyzer 8.4.1 (10.2.0 available)
-  app_links 6.4.1 (7.0.0 available)
-  characters 1.4.0 (1.4.1 available)
-  dart_jsonwebtoken 3.3.1 (3.3.2 available)
-  image 4.5.4 (4.8.0 available)
-  matcher 0.12.17 (0.12.19 available)
-  material_color_utilities 0.11.1 (0.13.0 available)
-  meta 1.17.0 (1.18.1 available)
-  shared_preferences_android 2.4.20 (2.4.21 available)
-  test 1.26.3 (1.30.0 available)
-  test_api 0.7.7 (0.7.10 available)
-  test_core 0.6.12 (0.6.16 available)
-Got dependencies!
-13 packages have newer versions incompatible with dependency constraints.
-Try `flutter pub outdated` for more information.
-Analyzing gamify...                                                     
-
-  error • The named parameter 'value' isn't defined •
-         lib/screens/admin_dashboard_screen.dart:240:13 •
-         undefined_named_parameter
-
-1 issue found. (ran in 7.1s)
-warui@pop-os:~/Projects/gamify$ : Text(hint, style: const TextStyle(color: AppTheme.textGrey)),
+          hint: Text(hint, style: const TextStyle(color: AppTheme.textGrey)),
           dropdownColor: const Color(0xFF131B24),
           icon: const Icon(Icons.arrow_drop_down, color: adminCyan),
           isExpanded: true,

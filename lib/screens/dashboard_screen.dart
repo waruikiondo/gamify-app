@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:share_plus/share_plus.dart'; // <-- NEW: Share Plus Import
 
 import '../core/theme.dart';
 import '../providers/global_providers.dart'; 
@@ -70,7 +71,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     
     // Watching the newly created streak provider
     final streakAsyncValue = ref.watch(userStreakProvider);
-
+    final profileAsync = ref.watch(userProfileProvider);
+    final String? avatarUrl = profileAsync.value?['avatar_url'];
+    
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(userProfileProvider);
@@ -91,10 +94,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 20,
                       backgroundColor: AppTheme.primary,
-                      child: Icon(Icons.person, color: Colors.white),
+                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                      child: avatarUrl == null 
+                          ? const Icon(Icons.person, color: Colors.white)
+                          : null,
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -114,29 +120,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 32),
 
-            // DYNAMIC STREAK BADGE
+            // DYNAMIC STREAK BADGE (UPDATED WITH TAP TO SHARE)
             Align(
               alignment: Alignment.centerRight,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.orangeAccent.withValues(alpha: 0.2), 
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
-                    const SizedBox(width: 4),
-                    streakAsyncValue.when(
-                      loading: () => const SizedBox(
-                        height: 12, width: 12, 
-                        child: CircularProgressIndicator(color: Colors.orangeAccent, strokeWidth: 2)
+              child: GestureDetector(
+                onTap: () {
+                  final currentStreak = streakAsyncValue.value ?? 0;
+                  if (currentStreak > 0) {
+                    _showStreakShareDialog(context, currentStreak);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Complete a session today to start your streak!'),
+                        backgroundColor: Colors.orangeAccent,
                       ),
-                      error: (err, stack) => const Text('0 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                      data: (streak) => Text('$streak Days', style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withValues(alpha: 0.2), 
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)), // Added slight border to make it look clickable
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
+                      const SizedBox(width: 4),
+                      streakAsyncValue.when(
+                        loading: () => const SizedBox(
+                          height: 12, width: 12, 
+                          child: CircularProgressIndicator(color: Colors.orangeAccent, strokeWidth: 2)
+                        ),
+                        error: (err, stack) => const Text('0 Days', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                        data: (streak) => Text('$streak Days', style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -321,6 +343,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // --- NEW: SHARE STREAK DIALOG ---
+  void _showStreakShareDialog(BuildContext context, int streak) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        contentPadding: const EdgeInsets.fromLTRB(32, 32, 32, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24), 
+          side: const BorderSide(color: Colors.orangeAccent, width: 2)
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.local_fire_department, size: 80, color: Colors.orangeAccent),
+            const SizedBox(height: 16),
+            const Text('STREAK KEEPER', textAlign: TextAlign.center, style: TextStyle(color: Colors.orangeAccent, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Text('$streak Days', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('You are on fire! Keep learning every day to maintain your streak and master your certification.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.only(bottom: 24),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('Close', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog first
+              Share.share('🔥 I am on a $streak-day learning streak! Getting ready for my certification. Can you beat my record?');
+            },
+            icon: const Icon(Icons.ios_share, color: Colors.black, size: 18),
+            label: const Text('Share Achievement', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orangeAccent,
+              minimumSize: const Size(0, 48), 
+            ),
+          )
+        ],
+      )
     );
   }
 

@@ -124,8 +124,7 @@ class _RankScreenState extends ConsumerState<RankScreen> {
       ),
     );
   }
-
-  Widget _buildPodiumAvatar(Map<String, dynamic> user, int rank, Color color, double size) {
+Widget _buildPodiumAvatar(Map<String, dynamic> user, int rank, Color color, double size) {
     final double totalScore = double.tryParse(user['total_score'].toString()) ?? 0.0;
     
     return Column(
@@ -145,8 +144,10 @@ class _RankScreenState extends ConsumerState<RankScreen> {
               child: CircleAvatar(
                 radius: size / 2,
                 backgroundColor: Colors.white24,
-                // Placeholder for avatar
-                child: Icon(Icons.person, size: size / 2, color: Colors.white), 
+                backgroundImage: user['avatar_url'] != null ? NetworkImage(user['avatar_url']) : null,
+                child: user['avatar_url'] == null 
+                    ? Icon(Icons.person, size: size / 2, color: Colors.white) 
+                    : null, 
               ),
             ),
             // Rank Badge
@@ -183,6 +184,7 @@ class _RankScreenState extends ConsumerState<RankScreen> {
       ],
     );
   }
+
 
   Widget _buildListHeader() {
     return Padding(
@@ -235,10 +237,13 @@ class _RankScreenState extends ConsumerState<RankScreen> {
           ),
           
           // Avatar
-          const CircleAvatar(
+          CircleAvatar(
             radius: 20,
             backgroundColor: Colors.white24,
-            child: Icon(Icons.person, color: Colors.white, size: 20),
+            backgroundImage: user['avatar_url'] != null ? NetworkImage(user['avatar_url']) : null,
+            child: user['avatar_url'] == null 
+                ? const Icon(Icons.person, color: Colors.white, size: 20)
+                : null,
           ),
           const SizedBox(width: 16),
           
@@ -307,10 +312,13 @@ class _RankScreenState extends ConsumerState<RankScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            const CircleAvatar(
+           CircleAvatar(
               radius: 20,
               backgroundColor: Colors.white24,
-              child: Icon(Icons.person, color: Colors.white, size: 20),
+              backgroundImage: user['avatar_url'] != null ? NetworkImage(user['avatar_url']) : null,
+              child: user['avatar_url'] == null 
+                  ? const Icon(Icons.person, color: Colors.white, size: 20)
+                  : null,
             ),
             const SizedBox(width: 12),
             const Expanded(

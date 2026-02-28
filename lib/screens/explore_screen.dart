@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../services/analytics_service.dart'; // <-- NEW IMPORT ADDED
 
 class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
@@ -47,6 +48,7 @@ class ExploreScreen extends ConsumerWidget {
                       if (index == levels.length) {
                         return _buildFinalBossTile(
                           context, 
+                          ref, // <-- PASSED REF HERE
                           isUnlocked: isFullyComplete, 
                           hasPassed: hasPassedFinal
                         );
@@ -59,6 +61,7 @@ class ExploreScreen extends ConsumerWidget {
                       
                       return _buildTimelineTile(
                         context,
+                        ref, // <-- PASSED REF HERE
                         title: level['title'] ?? 'Unknown',
                         description: level['description'] ?? '',
                         isCompleted: isCompleted,
@@ -78,7 +81,8 @@ class ExploreScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTimelineTile(BuildContext context, {
+  // --- UPDATED TIMELINE TILE WITH ANALYTICS ---
+  Widget _buildTimelineTile(BuildContext context, WidgetRef ref, {
     required String title,
     required String description,
     required bool isCompleted,
@@ -133,8 +137,13 @@ class ExploreScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     if (!isLocked && !isCompleted)
                       ElevatedButton(
-                        // VERIFIED: This correctly routes to the new Overview Screen
-                        onPressed: () => context.push('/level/$levelId'),
+                        onPressed: () {
+                          // --- 1. NEW ANALYTICS HOOK ---
+                          ref.read(analyticsServiceProvider).trackLevelStarted(levelId.toString());
+                          
+                          // Proceed to navigation
+                          context.push('/level/$levelId');
+                        },
                         child: const Text('Start Chapter'),
                       ),
                   ],
@@ -147,8 +156,8 @@ class ExploreScreen extends ConsumerWidget {
     );
   }
 
-  // --- THE NEW FINAL EXAM NODE ---
-  Widget _buildFinalBossTile(BuildContext context, {required bool isUnlocked, required bool hasPassed}) {
+  // --- UPDATED FINAL EXAM NODE WITH ANALYTICS ---
+  Widget _buildFinalBossTile(BuildContext context, WidgetRef ref, {required bool isUnlocked, required bool hasPassed}) {
     Color nodeColor = hasPassed ? Colors.amber : (isUnlocked ? Colors.amberAccent : AppTheme.border);
     
     return IntrinsicHeight(
@@ -207,7 +216,13 @@ class ExploreScreen extends ConsumerWidget {
                     
                     if (isUnlocked && !hasPassed)
                       ElevatedButton(
-                        onPressed: () => context.push('/mock-exam'),
+                        onPressed: () {
+                          // --- 2. NEW ANALYTICS HOOK ---
+                          ref.read(analyticsServiceProvider).trackMockExamStarted();
+                          
+                          // Proceed to navigation
+                          context.push('/mock-exam');
+                        },
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -221,7 +236,11 @@ class ExploreScreen extends ConsumerWidget {
                       
                     if (hasPassed)
                        ElevatedButton(
-                        onPressed: () => context.push('/mock-exam'),
+                        onPressed: () {
+                          // Good practice to also track retakes
+                          ref.read(analyticsServiceProvider).trackMockExamStarted();
+                          context.push('/mock-exam');
+                        },
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.border),
                         child: const Text('Retake Exam', style: TextStyle(color: Colors.white)),
                       ),

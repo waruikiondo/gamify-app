@@ -96,10 +96,10 @@ final leaderboardProvider = FutureProvider.autoDispose<List<Map<String, dynamic>
   List<Map<String, dynamic>> finalRankings = [];
 
   try {
-    // 1. Fetch any real users that exist in the profiles table
+    // UPDATED: Added avatar_url to the select query
     final response = await supabase
         .from('profiles')
-        .select('id, full_name, total_score, levels_completed, primary_goal, streak')
+        .select('id, full_name, total_score, levels_completed, primary_goal, streak, avatar_url')
         .order('total_score', ascending: false)
         .limit(50);
         
@@ -111,6 +111,7 @@ final leaderboardProvider = FutureProvider.autoDispose<List<Map<String, dynamic>
         'levels_completed': user['levels_completed'] ?? 0,
         'title': user['primary_goal'] ?? 'ACADEMY AGENT', 
         'streak': user['streak'] ?? 0,
+        'avatar_url': user['avatar_url'], // UPDATED: Passed to the UI
       };
     }).toList();
   } catch (e) {

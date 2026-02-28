@@ -28,7 +28,8 @@ class AnalyticsService {
     });
   }
 
-  void trackExamStarted() {
+  // FIX: Renamed from trackExamStarted to trackMockExamStarted
+  void trackMockExamStarted() {
     logEvent('mock_exam_started');
   }
 

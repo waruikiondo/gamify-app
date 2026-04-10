@@ -1,11 +1,12 @@
 class Question {
-  final String id; //
-  final String levelId; //
-  final String? skillAreaId; //
-  final String questionText; //
-  final String correctAnswer; //
-  final List<String> answerOptions; //
-  final String? explanation; //
+  final String id;
+  final String levelId;
+  final String? skillAreaId;
+  final String questionText;
+  final String correctAnswer;
+  final List<String> answerOptions;
+  final String? explanation;
+  final String? imageUrl; // <-- ADDED THIS FOR YOUR PDF FIGURES
 
   Question({
     required this.id,
@@ -15,6 +16,7 @@ class Question {
     required this.correctAnswer,
     required this.answerOptions,
     this.explanation,
+    this.imageUrl, // <-- ADDED THIS
   });
 
   // Creates a Question object from Supabase JSON
@@ -28,6 +30,7 @@ class Question {
       // Supabase returns arrays as List<dynamic>, so we cast to List<String>
       answerOptions: List<String>.from(json['answer_options'] ?? []),
       explanation: json['explanation'] as String?,
+      imageUrl: json['image_url'] as String?, // <-- ADDED THIS
     );
   }
 
@@ -41,6 +44,7 @@ class Question {
       'correct_answer': correctAnswer,
       'answer_options': answerOptions,
       'explanation': explanation,
+      'image_url': imageUrl, // <-- ADDED THIS
     };
   }
 }

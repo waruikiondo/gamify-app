@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
-// Note: Removed CustomTextField import as we are using customized premium inputs inline
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -24,7 +23,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // --- LOGIC REMAINS COMPLETELY UNTOUCHED ---
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -37,7 +35,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
-    // --- NEW PREMIUM UI APPLIED HERE ---
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -57,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 20),
                 
-                // Stylized Glowing Logo (Matching Splash Screen)
+                // Stylized Glowing Logo
                 Container(
                   width: 80,
                   height: 80,

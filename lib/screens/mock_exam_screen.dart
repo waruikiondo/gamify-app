@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:confetti/confetti.dart'; 
+import 'package:cached_network_image/cached_network_image.dart'; // <-- NEW CACHING IMPORT
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 import '../services/analytics_service.dart';
@@ -25,7 +26,6 @@ class MockExamScreen extends ConsumerStatefulWidget {
   ConsumerState<MockExamScreen> createState() => _MockExamScreenState();
 }
 
-// FIX 1: Add WidgetsBindingObserver to listen to the app's lifecycle
 class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final Map<int, int> _selectedAnswers = {}; 
@@ -48,14 +48,11 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    
-    // FIX 2: Register the observer when the screen loads
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    // FIX 3: Clean up the observer when the screen unloads
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _confettiController.dispose();
@@ -65,10 +62,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   // --- THE ANTI-CHEAT ENGINE ---
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // If the app is sent to the background (user switches apps, minimizes, goes to home screen)
     if (state == AppLifecycleState.paused) {
-      
-      // If the exam is currently running, punish the backgrounding
       if (_timer != null && _timer!.isActive && !_isExamFinished && !_isSubmitting) {
         _triggerAntiCheatPenalty();
       }
@@ -82,7 +76,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
 
     final questions = ref.read(mockQuestionsProvider).value ?? [];
     
-    // Instantly write a 0-score failure to the database to trigger the 24hr cooldown
     await ref.read(supabaseServiceProvider).saveMockExamResult(
       score: 0,
       totalQuestions: questions.length,
@@ -140,7 +133,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   // --- END ANTI-CHEAT ENGINE ---
 
   void _startTimerSafe() {
-    if (_timer != null && _timer!.isActive) return; // Prevent multiple timers
+    if (_timer != null && _timer!.isActive) return; 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() => _remainingSeconds--);
@@ -211,7 +204,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
       timeTakenSeconds: timeTaken,
     );
 
-    // ---> FIX: THE MISSING ANALYTICS HOOK IS NOW HERE <---
     ref.read(analyticsServiceProvider).trackExamCompleted(score, passed, timeTaken);
 
     if (mounted) {
@@ -242,7 +234,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
           error: (err, stack) => Center(child: Text('Error checking eligibility: $err', style: const TextStyle(color: Colors.redAccent))),
           data: (lastFailedTime) {
             
-            // Check Cooldown Logic (24 Hours)
             if (lastFailedTime != null) {
               final cooldownEnd = lastFailedTime.add(const Duration(hours: 24));
               final now = DateTime.now();
@@ -251,7 +242,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
               }
             }
 
-            // User is eligible, load the questions
             final questionsAsync = ref.watch(mockQuestionsProvider);
             return questionsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
@@ -263,7 +253,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                   return _buildResultsScreen(questions.length);
                 }
 
-                // Start timer safely only when questions are actively rendered
                 WidgetsBinding.instance.addPostFrameCallback((_) => _startTimerSafe());
 
                 return _buildActiveExam(questions);
@@ -416,12 +405,10 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                 const SizedBox(height: 40),
                 ElevatedButton(
                   onPressed: () {
-                    // Force refresh all dashboard state providers before leaving
                     ref.invalidate(finalExamStatusProvider);
                     ref.invalidate(userJourneyProvider);
                     ref.invalidate(skillMasteryProvider);
                     ref.invalidate(userProfileProvider);
-                    
                     context.go('/dashboard');
                   },
                   style: ElevatedButton.styleFrom(
@@ -437,7 +424,6 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
             ),
           ),
         ),
-        // Confetti Widget overlay
         ConfettiWidget(
           confettiController: _confettiController,
           blastDirectionality: BlastDirectionality.explosive,
@@ -500,6 +486,26 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                
+                // --- NEW HIGH-PERFORMANCE IMAGE RENDERER START ---
+                if (currentQuestion['image_url'] != null && currentQuestion['image_url'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: currentQuestion['image_url'].toString(),
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => const SizedBox(
+                          height: 100, 
+                          child: Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                        ),
+                        errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50, color: Colors.white54),
+                      ),
+                    ),
+                  ),
+                // --- NEW HIGH-PERFORMANCE IMAGE RENDERER END ---
+
                 Text(questionText, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 40),
                 ...List.generate(options.length, (index) {

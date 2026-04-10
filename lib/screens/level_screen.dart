@@ -2,6 +2,7 @@ import '../providers/global_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // <-- NEW CACHING IMPORT
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
@@ -130,8 +131,23 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                   ref.invalidate(userJourneyProvider); 
                   ref.invalidate(skillMasteryProvider);
 
-                  context.pop();
-                  context.go('/dashboard'); 
+                  context.pop(); // Close the dialog
+
+                  if (passed) {
+                    // Success: Return to dashboard
+                    context.go('/dashboard'); 
+                  } else {
+                    // 🚨 BUG FIX: Failure: Wipe state and instantly restart this exact level 🚨
+                    ref.invalidate(levelQuestionsProvider(widget.levelId)); 
+                    setState(() {
+                      _currentIndex = 0;
+                      _score = 0;
+                      _selectedIndex = null;
+                      _hasSubmitted = false;
+                      _isSavingProgress = false;
+                      _questionAttempts.clear();
+                    });
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: passed ? AppTheme.primary : AppTheme.border,
@@ -201,6 +217,26 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                       children: [
                         const Text('SECURITY GATE', style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                         const SizedBox(height: 12),
+                        
+                        // --- HIGH-PERFORMANCE IMAGE RENDERER START ---
+                        if (currentQuestion['image_url'] != null && currentQuestion['image_url'].toString().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 24.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: CachedNetworkImage(
+                                imageUrl: currentQuestion['image_url'].toString(),
+                                fit: BoxFit.contain,
+                                placeholder: (context, url) => const SizedBox(
+                                  height: 100, 
+                                  child: Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                                ),
+                                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50, color: Colors.white54),
+                              ),
+                            ),
+                          ),
+                        // --- HIGH-PERFORMANCE IMAGE RENDERER END ---
+
                         Text(currentQuestion['question_text'] as String, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 40),
                         ...List.generate(options.length, (index) {
@@ -230,7 +266,6 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     Color borderColor = AppTheme.border;
     Color bgColor = AppTheme.surface;
 
-    // FIX APPLIED HERE: Curly braces added around execution blocks
     if (_hasSubmitted) {
       if (isCorrect) {
         borderColor = Colors.greenAccent;

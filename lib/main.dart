@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // Added for environment variables
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 import 'core/theme.dart';
 import 'core/router.dart';
@@ -9,31 +10,37 @@ import 'core/router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load the environment variables from the .env file
   await dotenv.load(fileName: ".env");
 
-  // Initialize Supabase Backend securely using the .env variables
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
+  final posthogKey = dotenv.env['POSTHOG_API_KEY'];
+  if (posthogKey != null && posthogKey.isNotEmpty) {
+    final config = PostHogConfig(posthogKey);
+    config.host = 'https://us.i.posthog.com';
+    config.captureApplicationLifecycleEvents = true;
+    config.debug = false;
+    await Posthog().setup(config);
+  }
+
   runApp(
-    // Wrap the app in ProviderScope so Riverpod works globally
     const ProviderScope(
-      child: 2FlyDroneApp(),
+      child: FlyDroneApp(),
     ),
   );
 }
 
-class 2FlyDroneApp extends ConsumerStatefulWidget {
-  const 2FlyDroneApp({super.key});
+class FlyDroneApp extends ConsumerStatefulWidget {
+  const FlyDroneApp({super.key});
 
   @override
-  ConsumerState<2FlyDroneApp> createState() => _2FlyDroneAppState();
+  ConsumerState<FlyDroneApp> createState() => _FlyDroneAppState();
 }
 
-class _2FlyDroneAppState extends ConsumerState<2FlyDroneApp> {
+class _FlyDroneAppState extends ConsumerState<FlyDroneApp> {
   @override
   void initState() {
     super.initState();

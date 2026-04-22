@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import '../services/analytics_service.dart';
 
 // 1. Define the Authentication States
 abstract class AuthState {}
@@ -22,11 +23,13 @@ class AuthError extends AuthState {
 // 2. Create the Notifier using the modern Riverpod syntax
 class AuthNotifier extends Notifier<AuthState> {
   late final SupabaseClient _supabase;
+  late final AnalyticsService _analytics;
 
   @override
   AuthState build() {
     _supabase = Supabase.instance.client;
-    
+    _analytics = ref.read(analyticsServiceProvider);
+
     _supabase.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       final session = data.session;
@@ -34,23 +37,31 @@ class AuthNotifier extends Notifier<AuthState> {
       if (event == AuthChangeEvent.passwordRecovery) {
         state = AuthPasswordRecovery();
       } else if (event == AuthChangeEvent.signedIn && session != null) {
-        // CRITICAL FIX 1: Don't let auto-login overwrite the recovery state!
-        // Supabase signs the user in during recovery, but they MUST stay on the update screen.
+        // Don't let auto-login overwrite the recovery state.
         if (state is! AuthPasswordRecovery) {
+          _analytics.identifyUser(
+            session.user.id,
+            email: session.user.email,
+            name: session.user.userMetadata?['full_name'] as String?,
+          );
           state = AuthAuthenticated(session.user);
         }
       } else if (event == AuthChangeEvent.signedOut) {
+        _analytics.resetUser();
         state = AuthInitial();
       } else if (event == AuthChangeEvent.initialSession) {
-        // CRITICAL FIX 2: Explicitly handle the initial session resolution.
         if (session != null) {
+          _analytics.identifyUser(
+            session.user.id,
+            email: session.user.email,
+            name: session.user.userMetadata?['full_name'] as String?,
+          );
           state = AuthAuthenticated(session.user);
         } else {
           state = AuthInitial();
         }
       }
     }, onError: (error) {
-      // Catch any potential stream errors gracefully
       state = AuthError(error.toString());
     });
 

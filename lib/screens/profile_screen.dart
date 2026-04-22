@@ -682,7 +682,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.email, color: Colors.purpleAccent),
               title: const Text('Contact Support', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('support@gamify-learning.com', style: TextStyle(color: Colors.white54)),
+              subtitle: const Text('support@2flydrone-learning.com', style: TextStyle(color: Colors.white54)),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(

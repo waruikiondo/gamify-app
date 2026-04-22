@@ -98,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 _buildPremiumTextField(
                   controller: _emailController,
                   label: 'Work Email',
-                  hint: 'agent@gamify.com',
+                  hint: 'agent@2flydrone.com',
                   icon: Icons.email_outlined,
                 ),
                 const SizedBox(height: 24),

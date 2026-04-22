@@ -21,19 +21,19 @@ void main() async {
   runApp(
     // Wrap the app in ProviderScope so Riverpod works globally
     const ProviderScope(
-      child: GamifyApp(),
+      child: 2FlyDroneApp(),
     ),
   );
 }
 
-class GamifyApp extends ConsumerStatefulWidget {
-  const GamifyApp({super.key});
+class 2FlyDroneApp extends ConsumerStatefulWidget {
+  const 2FlyDroneApp({super.key});
 
   @override
-  ConsumerState<GamifyApp> createState() => _GamifyAppState();
+  ConsumerState<2FlyDroneApp> createState() => _2FlyDroneAppState();
 }
 
-class _GamifyAppState extends ConsumerState<GamifyApp> {
+class _2FlyDroneAppState extends ConsumerState<2FlyDroneApp> {
   @override
   void initState() {
     super.initState();
@@ -56,7 +56,7 @@ class _GamifyAppState extends ConsumerState<GamifyApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Gamify',
+      title: '2FlyDrone',
       theme: AppTheme.darkTheme, // Apply your custom dark theme
       routerConfig: router,
       debugShowCheckedModeBanner: false,

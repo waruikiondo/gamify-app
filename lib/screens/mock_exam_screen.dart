@@ -349,7 +349,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                 const SizedBox(height: 32),
                 
                 Text(
-                  _didPass ? 'CERTIFICATION ACHIEVED' : 'EXAM FAILED',
+                  _didPass ? 'READY FOR THE FAA' : 'EXAM FAILED',
                   style: TextStyle(
                     color: _didPass ? Colors.greenAccent : Colors.redAccent,
                     fontSize: 28,
@@ -416,7 +416,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                     minimumSize: const Size(double.infinity, 56),
                   ),
                   child: Text(
-                    _didPass ? 'Claim Certificate' : 'Return to Training',
+                    _didPass ? 'Steps to Get Certified' : 'Return to Training',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),

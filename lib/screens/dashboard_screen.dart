@@ -42,6 +42,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch at the top level so the play button always has fresh data
+    final journeyAsync = ref.watch(userJourneyProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -55,7 +58,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(journeyAsync),
     );
   }
 
@@ -661,7 +664,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(AsyncValue<Map<String, dynamic>> journeyAsync) {
+    final isLoading = journeyAsync is AsyncLoading;
+
+    void onPlayTap() {
+      if (isLoading) return; // Button shows spinner — ignore taps while loading
+
+      journeyAsync.whenData((journeyData) {
+        final isFullyComplete = journeyData['isFullyComplete'] as bool? ?? false;
+        final nextLevel = journeyData['nextLevel'] as Map<String, dynamic>?;
+        final levels = List<Map<String, dynamic>>.from(
+          (journeyData['levels'] as List? ?? []).map((e) => e as Map<String, dynamic>)
+        );
+
+        if (isFullyComplete) {
+          context.push('/mock-exam');
+          return;
+        }
+
+        // Mirror exactly what the "Start Session" button does:
+        // Use nextLevel, or fall back to the first level in the list
+        final target = nextLevel ?? (levels.isNotEmpty ? levels.first : null);
+
+        if (target != null && target['id'] != null) {
+          context.push('/level/${target['id']}');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No levels available yet. Check back soon!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: AppTheme.primary,
+            ),
+          );
+        }
+      });
+    }
+
     return Container(
       padding: const EdgeInsets.only(bottom: 24, top: 12),
       decoration: BoxDecoration(
@@ -675,19 +715,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildNavItem(Icons.explore_outlined, 'Explore', 1),
           
           GestureDetector(
-            onTap: () {
-              final journeyData = ref.read(userJourneyProvider).value;
-              if (journeyData != null) {
-                final isFullyComplete = journeyData['isFullyComplete'];
-                final nextLevel = journeyData['nextLevel'];
-                
-                if (isFullyComplete) {
-                  context.push('/mock-exam');
-                } else if (nextLevel != null) {
-                  context.push('/level/${nextLevel['id']}');
-                }
-              }
-            },
+            onTap: onPlayTap,
             child: Container(
               height: 56, width: 56,
               decoration: const BoxDecoration(
@@ -695,7 +723,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 shape: BoxShape.circle, 
                 boxShadow: [BoxShadow(color: AppTheme.primary, blurRadius: 15, spreadRadius: -5)],
               ),
-              child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
+              child: isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.play_arrow, color: Colors.white, size: 32),
             ),
           ),
           

@@ -81,8 +81,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: const Center(
                       child: Text(
-                        'G',
-                        style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                        '2FD',
+                        style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                       ),
                     ),
                   ),

@@ -182,11 +182,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final double overallProgress = totalLevels > 0 ? completedLevels / totalLevels : 0.0;
                 final bool isFullyComplete = journeyData['isFullyComplete'];
                 
-                final currentLevel = journeyData['nextLevel'] ?? {
-                  'level_order': totalLevels,
-                  'title': 'All Chapters Complete!',
-                  'description': 'You are ready for the Final Exam.'
-                };
+                // nextLevel is the first unlocked+incomplete level.
+                // If null but not fully complete, fall back to the first level in the list.
+                // Only use the "complete" fallback when isFullyComplete is actually true.
+                final List<Map<String, dynamic>> allLevels = 
+                    List<Map<String, dynamic>>.from(journeyData['levels'] ?? []);
+
+                final currentLevel = journeyData['nextLevel'] 
+                  ?? (isFullyComplete
+                      ? {'level_order': totalLevels, 'title': 'All Chapters Complete!', 'description': 'You are ready for the Final Exam.'}
+                      : (allLevels.isNotEmpty ? allLevels.first : {'level_order': 1, 'title': 'Getting Started', 'description': 'Begin your first session.'}));
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

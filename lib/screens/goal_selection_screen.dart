@@ -17,37 +17,36 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
   int? _selectedIndex;
   bool _isLoading = false; 
 
-  // Updated titles to match your gamified roles!
   final List<Map<String, dynamic>> _goals = [
     {
       'id': 'certified',
-      'icon': Icons.verified_outlined,
-      'title': 'CLOUD ARCHITECT',
-      'subtitle': 'Earn recognized credentials to boost your resume.',
+      'icon': Icons.flight_takeoff_outlined,
+      'title': 'CERTIFIED PILOT',
+      'subtitle': 'Pass the FAA Part 107 exam and unlock commercial drone operations.',
       'iconColor': Colors.purpleAccent,
       'bgColor': const Color(0xFF2E1A47),
     },
     {
-      'id': 'skills',
-      'icon': Icons.psychology_outlined,
-      'title': 'CYBER SPECIALIST',
-      'subtitle': 'Deepen your technical knowledge in specific areas.',
+      'id': 'aerial',
+      'icon': Icons.camera_outdoor_outlined,
+      'title': 'AERIAL ARTIST',
+      'subtitle': 'Master drone photography and cinematography for creative work.',
       'iconColor': Colors.tealAccent,
       'bgColor': const Color(0xFF1A3B3A),
     },
     {
-      'id': 'pivot',
-      'icon': Icons.rocket_launch_outlined,
-      'title': 'DATA SCIENTIST',
-      'subtitle': 'Transition to a new role or industry entirely.',
+      'id': 'commercial',
+      'icon': Icons.business_center_outlined,
+      'title': 'COMMERCIAL FLYER',
+      'subtitle': 'Build a drone services business — inspections, mapping, delivery.',
       'iconColor': Colors.orangeAccent,
       'bgColor': const Color(0xFF4A2B1A),
     },
     {
       'id': 'explore',
       'icon': Icons.explore_outlined,
-      'title': 'ACADEMY AGENT',
-      'subtitle': 'Browsing courses without a specific end goal.',
+      'title': 'FREE EXPLORER',
+      'subtitle': 'Learn drone fundamentals and airspace rules at your own pace.',
       'iconColor': Colors.pinkAccent,
       'bgColor': const Color(0xFF4A1A31),
     },
@@ -100,9 +99,9 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => context.pop(), 
+                    onPressed: () => context.pop(),
                     padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
+                    alignment: Alignment.center,
                   ),
                   Row(
                     children: [
@@ -116,7 +115,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () => _saveGoalAndContinue('ACADEMY AGENT'),
+                    onPressed: () => _saveGoalAndContinue('FREE EXPLORER'),
                     child: const Text(
                       'Skip',
                       style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
@@ -128,7 +127,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
 
               // Header Text
               const Text(
-                'What is your primary goal?',
+                'Why are you here to fly?',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 32,
@@ -138,7 +137,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                "We'll personalize your learning path based on your selection.",
+                "We'll tailor your training path to match your drone ambitions.",
                 style: TextStyle(color: AppTheme.textGrey, fontSize: 16),
               ),
               const SizedBox(height: 32),

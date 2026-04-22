@@ -144,9 +144,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white70),
-            onPressed: () => _showSettingsPanel(context, fallbackName),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white70),
+              onPressed: () => _showSettingsPanel(context, fallbackName),
+            ),
           )
         ],
       ),

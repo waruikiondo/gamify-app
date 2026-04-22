@@ -24,6 +24,7 @@ echo ">>> Creating .env from environment variables..."
 echo "SUPABASE_URL=$SUPABASE_URL" > .env
 echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
 echo "POSTHOG_API_KEY=$POSTHOG_API_KEY" >> .env
+echo "REDIRECT_URL=$REDIRECT_URL" >> .env
 
 echo ">>> Installing dependencies..."
 flutter pub get

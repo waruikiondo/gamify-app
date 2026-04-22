@@ -30,7 +30,7 @@ class SupabaseService {
     if (user == null) throw Exception('User not logged in');
 
     try {
-      final response = await _client.from('users').select().eq('id', user.id).single();
+      final response = await _client.from('profiles').select().eq('id', user.id).single();
       return response;
     } catch (e) {
       debugPrint('Error fetching profile: $e');
@@ -97,7 +97,7 @@ class SupabaseService {
     if (user == null) return;
 
     try {
-      await _client.from('users').update({'full_name': newName}).eq('id', user.id);
+      await _client.from('profiles').update({'full_name': newName}).eq('id', user.id);
       await _client.auth.updateUser(UserAttributes(data: {'full_name': newName}));
     } catch (e) {
       debugPrint('Error updating name: $e');

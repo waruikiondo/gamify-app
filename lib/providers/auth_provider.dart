@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../services/analytics_service.dart';
@@ -138,7 +139,11 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> resetPassword(String email) async {
     state = AuthLoading();
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      final redirectUrl = dotenv.env['REDIRECT_URL'] ?? 'http://localhost';
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: '$redirectUrl/update-password',
+      );
       state = AuthInitial();
     } on AuthException catch (e) {
       state = AuthError(e.message);

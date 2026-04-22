@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,11 +15,35 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   bool _emailSent = false;
+  int _resendCountdown = 0;
+  Timer? _resendTimer;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _resendTimer?.cancel();
     super.dispose();
+  }
+
+  void _startResendCountdown() {
+    _resendTimer?.cancel();
+    setState(() => _resendCountdown = 45);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        if (_resendCountdown > 0) {
+          _resendCountdown--;
+        } else {
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  void _sendResetLink() {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    ref.read(authProvider.notifier).resetPassword(email);
   }
 
   // --- LOGIC REMAINS COMPLETELY UNTOUCHED ---
@@ -28,12 +53,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next is AuthError) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.message), backgroundColor: Colors.redAccent));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.message), backgroundColor: Colors.redAccent),
+        );
       } else if (next is AuthInitial && _emailController.text.isNotEmpty) {
-        // Assuming AuthInitial is returned after successful password reset trigger
-        setState(() {
-          _emailSent = true;
-        });
+        setState(() => _emailSent = true);
+        _startResendCountdown();
       }
     });
 
@@ -133,9 +158,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ]
           ),
           child: ElevatedButton(
-            onPressed: authState is AuthLoading ? null : () {
-               ref.read(authProvider.notifier).resetPassword(_emailController.text.trim());
-            },
+            onPressed: authState is AuthLoading ? null : _sendResetLink,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
@@ -267,14 +290,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             const Text('Didn\'t receive the email?', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
             const SizedBox(height: 4),
             TextButton(
-              onPressed: () { /* Resend Logic */ },
+              onPressed: _resendCountdown > 0 ? null : _sendResetLink,
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF8A2BE2),
+                disabledForegroundColor: AppTheme.textGrey,
                 padding: EdgeInsets.zero,
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Resend link in 45s', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              child: Text(
+                _resendCountdown > 0 ? 'Resend link in ${_resendCountdown}s' : 'Resend link',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),

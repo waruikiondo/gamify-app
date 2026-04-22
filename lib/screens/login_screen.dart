@@ -199,7 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {},
-                        icon: const Icon(Icons.apple, color: Colors.white),
+                        icon: const Icon(Icons.apple, color: Colors.white, size: 28),
                         label: const Text('Apple', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
                           backgroundColor: const Color(0xFF131B24),

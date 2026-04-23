@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:confetti/confetti.dart'; 
 import 'package:cached_network_image/cached_network_image.dart'; // <-- NEW CACHING IMPORT
 import '../core/theme.dart';
@@ -37,6 +38,11 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   int _finalScore = 0;
   int _finalTime = 0;
   List<String> _weakAreas = [];
+
+  // Post-exam FAA follow-up questions (null = not answered)
+  bool? _faaScheduled;
+  bool? _faaPassed;
+  bool _followUpSaved = false;
 
   static const int _examDurationSeconds = 60 * 60; 
   int _remainingSeconds = _examDurationSeconds;
@@ -402,7 +408,68 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                   ),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                // --- FAA FOLLOW-UP QUESTIONS (OPTIONAL) ---
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.help_outline, color: AppTheme.primary, size: 18),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'QUICK CHECK-IN',
+                            style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Optional',
+                            style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFollowUpQuestion(
+                        question: 'Have you scheduled the FAA Part 107 exam?',
+                        value: _faaScheduled,
+                        onChanged: (val) {
+                          setState(() => _faaScheduled = val);
+                          _saveFaaFollowUp();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFollowUpQuestion(
+                        question: 'Have you taken the FAA Part 107 exam and passed?',
+                        value: _faaPassed,
+                        onChanged: (val) {
+                          setState(() => _faaPassed = val);
+                          _saveFaaFollowUp();
+                        },
+                      ),
+                      if (_followUpSaved) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: const [
+                            Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                            SizedBox(width: 6),
+                            Text('Saved — thanks!', style: TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // --- END FAA FOLLOW-UP ---
+
+                const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
                     ref.invalidate(finalExamStatusProvider);
@@ -433,6 +500,53 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
           colors: const [Colors.amber, Colors.greenAccent, Colors.white],
         ),
       ],
+    );
+  }
+
+  Widget _buildFollowUpQuestion({
+    required String question,
+    required bool? value,
+    required void Function(bool) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(question, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _buildYesNoButton(label: 'Yes', selected: value == true, onTap: () => onChanged(true)),
+            const SizedBox(width: 8),
+            _buildYesNoButton(label: 'No', selected: value == false, onTap: () => onChanged(false)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildYesNoButton({required String label, required bool selected, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.border,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? AppTheme.primary : AppTheme.textGrey,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 13,
+          ),
+        ),
+      ),
     );
   }
 
@@ -559,6 +673,21 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         ),
       ],
     );
+  }
+
+  Future<void> _saveFaaFollowUp() async {
+    if (_followUpSaved) return;
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      await Supabase.instance.client.from('profiles').update({
+        if (_faaScheduled != null) 'faa_exam_scheduled': _faaScheduled,
+        if (_faaPassed != null) 'faa_exam_passed': _faaPassed,
+      }).eq('id', userId);
+      if (mounted) setState(() => _followUpSaved = true);
+    } catch (e) {
+      debugPrint('FAA follow-up save failed (columns may not exist yet): $e');
+    }
   }
 
   void _showExitWarning(int totalQuestions) {

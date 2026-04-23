@@ -1,6 +1,6 @@
-# Gamify
+# 2FLYDRONES
 
-A cyberpunk-themed, gamified IT certification learning platform built with Flutter and Supabase. Users progress through sequential learning levels, take timed mock exams, track skill mastery, compete on a global leaderboard, and earn a downloadable PDF certificate on completion.
+2FLYDRONES Consulting & Licensing — a gamified training experience backed by Supabase. Users progress through sequential learning levels, take timed mock exams, track skill mastery, compete on a global leaderboard, and earn a downloadable PDF certificate on completion.
 
 ---
 
@@ -8,9 +8,9 @@ A cyberpunk-themed, gamified IT certification learning platform built with Flutt
 
 | Layer | Technology |
 |---|---|
-| Framework | Flutter 3.41.2 / Dart 3.11.0 |
+| Client | Dart 3.11.0 |
 | Backend | Supabase (Auth, PostgreSQL, Storage, RPC) |
-| State Management | Flutter Riverpod |
+| State Management | Riverpod |
 | Navigation | GoRouter |
 | Font | Google Fonts — Inter |
 | PDF Generation | `pdf` + `printing` |
@@ -201,24 +201,20 @@ App Launch
 
 ### Prerequisites
 
-- Flutter 3.41.2+ / Dart 3.11.0+
+- Dart 3.11.0+
 - A Supabase project with the schema from `supabase/migrations/0001_initial_schema.sql`
 
 ### Setup
 
 ```bash
 # 1. Clone and install dependencies
-flutter pub get
+dart pub get
 
 # 2. Create .env in the project root
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 
-# 3. Run on web
-flutter run -d chrome
-
-# 4. Run on Android (ensure NDK 28.x is installed via Android Studio SDK Manager)
-flutter run -d <device-id>
+# 3. Run the app using your configured client toolchain
 ```
 
 ### Exam Content Import
@@ -238,9 +234,8 @@ SUPABASE_URL=... SUPABASE_SERVICE_KEY=... python process_exam.py
 | Item | Status |
 |---|---|
 | `~/.cursor/mcp.json` Dart MCP | Configured (`command: dart`, args split correctly) |
-| Active Dart | `/Users/.../Downloads/flutter/bin/dart` — v3.11.0 |
-| Flutter | 3.41.2 stable |
+| Active Dart | v3.11.0 |
 | Android NDK | 27.x + 28.x both installed with valid `source.properties` |
 | JAVA_HOME | `/opt/homebrew/opt/openjdk@17` — add to `~/.zprofile` to persist |
-| Android SDK | v34 installed — Flutter 3.41.2 requires SDK 36 (upgrade pending) |
+| Android SDK | v34 installed |
 | Web (Chrome) | Fully working |

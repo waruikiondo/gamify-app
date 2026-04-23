@@ -19,41 +19,45 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
 
   final List<Map<String, dynamic>> _goals = [
     {
-      'id': 'certified',
-      'icon': Icons.flight_takeoff_outlined,
-      'title': 'CERTIFIED PILOT',
-      'subtitle': 'Pass the FAA Part 107 exam and unlock commercial drone operations.',
+      'id': 'beginner',
+      'icon': Icons.flight_land_outlined,
+      'title': 'BEGINNER',
+      'label': 'No experience? No problem.',
+      'subtitle': 'Learn the basics and get ready for takeoff.',
       'iconColor': Colors.purpleAccent,
       'bgColor': const Color(0xFF2E1A47),
     },
     {
-      'id': 'aerial',
-      'icon': Icons.camera_outdoor_outlined,
-      'title': 'AERIAL ARTIST',
-      'subtitle': 'Master drone photography and cinematography for creative work.',
+      'id': 'novelty',
+      'icon': Icons.flight_outlined,
+      'title': 'NOVELTY',
+      'label': 'Some experience? Let\'s level up.',
+      'subtitle': 'Turn casual flying into confident control.',
       'iconColor': Colors.tealAccent,
       'bgColor': const Color(0xFF1A3B3A),
     },
     {
-      'id': 'commercial',
-      'icon': Icons.business_center_outlined,
-      'title': 'COMMERCIAL FLYER',
-      'subtitle': 'Build a drone services business — inspections, mapping, delivery.',
+      'id': 'moderate',
+      'icon': Icons.flight_takeoff_outlined,
+      'title': 'MODERATE',
+      'label': 'You fly drones regularly or before.',
+      'subtitle': 'Sharpen your skills and fly with purpose.',
       'iconColor': Colors.orangeAccent,
       'bgColor': const Color(0xFF4A2B1A),
     },
     {
-      'id': 'explore',
-      'icon': Icons.explore_outlined,
-      'title': 'FREE EXPLORER',
-      'subtitle': 'Learn drone fundamentals and airspace rules at your own pace.',
+      'id': 'advanced',
+      'icon': Icons.workspace_premium_outlined,
+      'title': 'ADVANCED',
+      'label': 'Built drones. Fly drones. Master it.',
+      'subtitle': 'For experienced pilots ready for pro-level flying.',
       'iconColor': Colors.pinkAccent,
       'bgColor': const Color(0xFF4A1A31),
     },
   ];
 
   // --- UPDATED: Backend Logic ---
-  Future<void> _saveGoalAndContinue([String defaultGoalTitle = 'ACADEMY AGENT']) async {
+  Future<void> _saveGoalAndContinue([String defaultGoalTitle = 'BEGINNER']) async {
     setState(() => _isLoading = true);
     try {
       final userId = Supabase.instance.client.auth.currentUser!.id;
@@ -115,7 +119,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () => _saveGoalAndContinue('FREE EXPLORER'),
+                    onPressed: () => _saveGoalAndContinue('BEGINNER'),
                     child: const Text(
                       'Skip',
                       style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
@@ -127,7 +131,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
 
               // Header Text
               const Text(
-                'Why are you here to fly?',
+                'What\'s your experience level?',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 32,
@@ -137,7 +141,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                "We'll tailor your training path to match your drone ambitions.",
+                "We'll tailor your training path to match where you are right now.",
                 style: TextStyle(color: AppTheme.textGrey, fontSize: 16),
               ),
               const SizedBox(height: 32),
@@ -158,6 +162,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                       },
                       child: _buildGoalCard(
                         title: goal['title'],
+                        label: goal['label'],
                         subtitle: goal['subtitle'],
                         icon: goal['icon'],
                         iconColor: goal['iconColor'],
@@ -209,6 +214,7 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
 
   Widget _buildGoalCard({
     required String title,
+    required String label,
     required String subtitle,
     required IconData icon,
     required Color iconColor,
@@ -260,12 +266,22 @@ class _GoalSelectionScreenState extends ConsumerState<GoalSelectionScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: iconColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: const TextStyle(
                     color: AppTheme.textGrey,
-                    fontSize: 12,
+                    fontSize: 11,
                     height: 1.4,
                   ),
                 ),

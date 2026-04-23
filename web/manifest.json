@@ -1,11 +1,11 @@
 {
-    "name": "gamify",
-    "short_name": "gamify",
+    "name": "2FLYDRONES",
+    "short_name": "2FLYDRONES",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B0B0E",
+    "theme_color": "#0B0B0E",
+    "description": "2FLYDRONES Consulting & Licensing — training, compliance, and licensing support.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

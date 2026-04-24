@@ -11,6 +11,7 @@ import '../screens/goal_selection_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/level_overview_screen.dart'; 
 import '../screens/level_screen.dart';
+import '../screens/admin_question_preview_screen.dart';
 import '../screens/mock_exam_screen.dart';
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/access_code_screen.dart';
@@ -83,6 +84,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final levelId = state.pathParameters['levelId']!;
           return LevelScreen(levelId: levelId); 
+        },
+      ),
+
+      GoRoute(
+        path: '/level/:levelId/questions',
+        builder: (context, state) {
+          final levelId = state.pathParameters['levelId']!;
+          return AdminQuestionPreviewScreen(levelId: levelId);
         },
       ),
       

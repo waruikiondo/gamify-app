@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../services/analytics_service.dart'; // <-- NEW IMPORT ADDED
+import '../providers/access_gate_provider.dart';
 
 class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
@@ -13,8 +14,10 @@ class ExploreScreen extends ConsumerWidget {
     // Watch the global providers
     final journeyAsync = ref.watch(userJourneyProvider);
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
+    final gateAsync = ref.watch(accessGateStatusProvider);
     
     final bool hasPassedFinal = hasPassedExamAsync.value ?? false;
+    final bool isAdmin = gateAsync.value?.isAdmin ?? false;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -57,7 +60,7 @@ class ExploreScreen extends ConsumerWidget {
                       // Otherwise, render the standard chapters
                       final level = levels[index];
                       final bool isCompleted = level['isCompleted'] ?? false;
-                      final bool isLocked = level['isLocked'] ?? true;
+                      final bool isLocked = isAdmin ? false : (level['isLocked'] ?? true);
                       
                       return _buildTimelineTile(
                         context,
@@ -135,7 +138,7 @@ class ExploreScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Text(description, style: const TextStyle(color: AppTheme.textGrey, fontSize: 14)),
                     const SizedBox(height: 16),
-                    if (!isLocked && !isCompleted)
+                    if ((!isLocked || (ref.watch(accessGateStatusProvider).value?.isAdmin ?? false)) && !isCompleted)
                       ElevatedButton(
                         onPressed: () {
                           // --- 1. NEW ANALYTICS HOOK ---

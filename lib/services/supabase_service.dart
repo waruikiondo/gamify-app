@@ -280,7 +280,8 @@ class SupabaseService {
     final user = _client.auth.currentUser;
     if (user == null) return false;
     try {
-      final response = await _client.from('users').select('is_admin').eq('id', user.id).single();
+      // Source of truth is profiles.is_admin (content/admin policies reference profiles).
+      final response = await _client.from('profiles').select('is_admin').eq('id', user.id).single();
       return response['is_admin'] == true;
     } catch (e) {
       return false;

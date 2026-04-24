@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme.dart';
 import '../models/level.dart';
+import '../providers/access_gate_provider.dart';
 
 // --- NEW: Fetch the specific level details directly from Supabase ---
 final levelDetailProvider = FutureProvider.autoDispose.family<Level, String>((ref, levelId) async {
@@ -26,6 +27,7 @@ class LevelOverviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final levelAsync = ref.watch(levelDetailProvider(levelId));
+    final gateAsync = ref.watch(accessGateStatusProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -144,45 +146,93 @@ class LevelOverviewScreen extends ConsumerWidget {
                   ]
                 ),
                 child: SafeArea(
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)
+                  child: gateAsync.when(
+                    loading: () => SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: null,
+                        child: const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         ),
-                        elevation: 10,
-                        shadowColor: AppTheme.primary.withOpacity(0.5),
-                      ),
-                      onPressed: () {
-                        // Push deeper into the actual assessment!
-                        context.push('/level/${level.id}/assessment');
-                      },
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.bolt, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            'INITIALIZE ASSESSMENT', 
-                            style: TextStyle(
-                              color: Colors.white, 
-                              fontWeight: FontWeight.bold, 
-                              letterSpacing: 1.5,
-                              fontSize: 14,
-                            )
-                          ),
-                        ],
                       ),
                     ),
+                    error: (_, ___) => SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: _buildAssessmentButton(context, level.id, isAdmin: false),
+                    ),
+                    data: (gate) {
+                      if (!gate.isAdmin) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: _buildAssessmentButton(context, level.id, isAdmin: false),
+                        );
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            height: 56,
+                            child: _buildAssessmentButton(context, level.id, isAdmin: true),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 56,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.cyanAccent,
+                                side: const BorderSide(color: Colors.cyanAccent),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () => context.push('/level/${level.id}/questions'),
+                              child: const Text('VIEW QUESTIONS'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAssessmentButton(BuildContext context, String levelId, {required bool isAdmin}) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 10,
+        shadowColor: AppTheme.primary.withValues(alpha: 0.5),
+      ),
+      onPressed: () {
+        // Admins can still run the assessment, but also have a read-only preview route.
+        context.push('/level/$levelId/assessment');
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(isAdmin ? Icons.visibility : Icons.bolt, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            isAdmin ? 'PREVIEW ASSESSMENT' : 'INITIALIZE ASSESSMENT',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -20,21 +20,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     super.initState();
 
     // 1. Initialize the video
-    _videoController = VideoPlayerController.asset('assets/videos/splash_video.mp4')
-      ..initialize().then((_) {
-        // Mute the video to ensure it auto-plays smoothly on iOS and Android
-        _videoController.setVolume(0.0);
-        _videoController.setLooping(true);
-        _videoController.play();
-        
-        // Refresh the UI once the video is loaded
-        setState(() {});
-      });
+    _videoController =
+        VideoPlayerController.asset('assets/videos/splash_video.mp4')
+          ..initialize().then((_) {
+            // Mute the video to ensure it auto-plays smoothly on iOS and Android
+            _videoController.setVolume(0.0);
+            _videoController.setLooping(true);
+            _videoController.play();
+
+            // Refresh the UI once the video is loaded
+            setState(() {});
+          });
 
     // 2. Wait 3 seconds, then check Auth and navigate
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 7), () {
       if (!mounted) return;
-      
+
       final authState = ref.read(authProvider);
       if (authState is AuthAuthenticated) {
         context.go('/dashboard');
@@ -69,9 +70,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
 
           // LAYER 2: Dark Overlay (Ensures text/logos are always visible)
-          Container(
-            color: Colors.black.withValues(alpha: 0.6), 
-          ),
+          Container(color: Colors.black.withValues(alpha: 0.6)),
 
           // LAYER 3: Your 2flydrone Branding
           Center(
@@ -98,7 +97,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     ],
                   ),
                   child: Container(
-                    margin: const EdgeInsets.all(4), 
+                    margin: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
                       color: Color(0xFF0A0F14),
                       shape: BoxShape.circle,
@@ -106,32 +105,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     child: const Center(
                       child: Text(
                         '2FD',
-                        style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 const Text(
-                  '2FLYDRONE', 
+                  '2FLYDRONE',
                   style: TextStyle(
-                    fontSize: 28, 
-                    fontWeight: FontWeight.w900, 
-                    color: Colors.white, 
-                    letterSpacing: 4.0
-                  )
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 4.0,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'FLIGHT ACADEMY', 
+                  'FLIGHT ACADEMY',
                   style: TextStyle(
-                    color: Colors.cyanAccent, 
-                    fontSize: 14, 
+                    color: Colors.cyanAccent,
+                    fontSize: 14,
                     letterSpacing: 2.0,
-                    fontWeight: FontWeight.bold
-                  )
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),

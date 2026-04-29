@@ -44,20 +44,24 @@ class SupabaseService {
     if (user == null) return 0;
 
     try {
-      final userData = await _client.from('users').select('current_streak, last_active_date').eq('id', user.id).single();
-      
+      final profile = await _client
+          .from('profiles')
+          .select('streak, last_active_date')
+          .eq('id', user.id)
+          .maybeSingle();
+
       final now = DateTime.now();
       // Strip time to just compare the calendar days
-      final today = DateTime(now.year, now.month, now.day); 
-      
-      int currentStreak = userData['current_streak'] ?? 0;
-      final lastActiveStr = userData['last_active_date'];
+      final today = DateTime(now.year, now.month, now.day);
+
+      int currentStreak = (profile?['streak'] as int?) ?? 0;
+      final lastActiveStr = profile?['last_active_date'];
       
       // If they have never logged a streak before
       if (lastActiveStr == null) {
         currentStreak = 1;
-        await _client.from('users').update({
-          'current_streak': currentStreak,
+        await _client.from('profiles').update({
+          'streak': currentStreak,
           'last_active_date': today.toIso8601String(),
         }).eq('id', user.id);
         return currentStreak;
@@ -70,15 +74,15 @@ class SupabaseService {
       if (difference == 1) {
         // Logged in exactly 1 day later (Consecutive!)
         currentStreak += 1;
-        await _client.from('users').update({
-          'current_streak': currentStreak,
+        await _client.from('profiles').update({
+          'streak': currentStreak,
           'last_active_date': today.toIso8601String(),
         }).eq('id', user.id);
       } else if (difference > 1) {
         // Missed a day. Streak broken.
         currentStreak = 1;
-        await _client.from('users').update({
-          'current_streak': currentStreak,
+        await _client.from('profiles').update({
+          'streak': currentStreak,
           'last_active_date': today.toIso8601String(),
         }).eq('id', user.id);
       }

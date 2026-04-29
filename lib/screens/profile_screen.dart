@@ -1021,7 +1021,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onTap: () {
                 // Pop the current bottom sheet first, but open the new one using
                 // the root navigator context to avoid deactivated-context errors.
-                final navContext = Navigator.of(context, rootNavigator: true).context;
+                final navContext = Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).context;
                 Navigator.pop(context);
                 _showFaqsPanel(navContext);
               },
@@ -1043,10 +1046,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       builder: (context) => DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.85,
+        initialChildSize: 0.65,
         maxChildSize: 0.95,
-        builder: (context, scrollController) => FaqsBottomSheet(
-          scrollController: scrollController,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'FAQs',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: FaqsBottomSheet(scrollController: scrollController),
+              ),
+            ],
+          ),
         ),
       ),
     );

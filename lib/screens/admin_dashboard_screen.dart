@@ -1,7 +1,10 @@
 import '../providers/global_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:math';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
@@ -25,11 +28,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   int _currentIndex = 0;
   bool _isCheckingAccess = true; // Security Flag
   static const Color adminCyan = Colors.cyanAccent;
+  final _accessEmailCtrl = TextEditingController();
+  bool _isGeneratingCode = false;
 
   @override
   void initState() {
     super.initState();
     _verifyAdminAccess();
+  }
+
+  @override
+  void dispose() {
+    _accessEmailCtrl.dispose();
+    super.dispose();
   }
 
   // --- ROUTE GUARD SECURITY CHECK ---
@@ -82,6 +93,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         children: [
           _buildLevelsManager(),
           _buildQuestionsManager(),
+          _buildAccessCodesManager(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -93,6 +105,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.layers), label: 'Manage Levels'),
           BottomNavigationBarItem(icon: Icon(Icons.question_answer), label: 'Manage Questions'),
+          BottomNavigationBarItem(icon: Icon(Icons.key), label: 'Access Codes'),
         ],
       ),
     );
@@ -281,6 +294,130 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         ),
       ],
     );
+  }
+
+  // ==========================================
+  // 3. ACCESS CODES MANAGER
+  // ==========================================
+  Widget _buildAccessCodesManager() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Learner Access Codes',
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Generate a one-time code bound to a learner email. When redeemed, access is granted for 45 days.',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          _buildAdminTextField(_accessEmailCtrl, 'Student Email (e.g. student@school.com)', Icons.email_outlined),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _isGeneratingCode ? null : _generateAndCopyCode,
+            style: _adminButtonStyle(),
+            child: _isGeneratingCode
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: adminCyan))
+                : const Text('GENERATE CODE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _randomCode({int length = 16}) {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = Random.secure();
+    return List.generate(length, (_) => alphabet[rand.nextInt(alphabet.length)]).join();
+  }
+
+  Future<void> _generateAndCopyCode() async {
+    final email = _accessEmailCtrl.text.trim().toLowerCase();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid student email.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    setState(() => _isGeneratingCode = true);
+    try {
+      final code = _randomCode(length: 18);
+      final supabase = Supabase.instance.client;
+      final result = await supabase.rpc('create_access_code', params: {
+        'p_email': email,
+        'p_code': code,
+      });
+
+      if (!mounted) return;
+
+      final ok = (result is Map && result['ok'] == true);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create code: ${result.toString()}'), backgroundColor: Colors.redAccent),
+        );
+        return;
+      }
+
+      await Clipboard.setData(ClipboardData(text: code));
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF131B24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Access Code Created', style: TextStyle(color: Colors.white)),
+          content: Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  code,
+                  style: const TextStyle(
+                    color: adminCyan,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Copy',
+                icon: const Icon(Icons.copy, color: adminCyan),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: code));
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Access code copied to clipboard.'),
+                      backgroundColor: adminCyan,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close', style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+      );
+    } finally {
+      if (mounted) setState(() => _isGeneratingCode = false);
+    }
   }
 
   Future<void> _submitQuestion() async {

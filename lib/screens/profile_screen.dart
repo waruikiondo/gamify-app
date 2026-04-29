@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart'; // NEW IMPORT
 import '../core/theme.dart';
 import '../providers/global_providers.dart';
 import '../providers/access_gate_provider.dart';
+import 'faqs_bottom_sheet.dart';
 import '../services/supabase_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -1017,10 +1018,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Read FAQs',
                 style: TextStyle(color: Colors.white),
               ),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                // Pop the current bottom sheet first, but open the new one using
+                // the root navigator context to avoid deactivated-context errors.
+                final navContext = Navigator.of(context, rootNavigator: true).context;
+                Navigator.pop(context);
+                _showFaqsPanel(navContext);
+              },
             ),
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showFaqsPanel(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E1A3A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => FaqsBottomSheet(
+          scrollController: scrollController,
         ),
       ),
     );

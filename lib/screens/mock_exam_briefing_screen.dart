@@ -34,12 +34,19 @@ class MockExamBriefingScreen extends ConsumerWidget {
         centerTitle: true,
       ),
       body: levelAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: Colors.amberAccent)),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Colors.amberAccent),
+        ),
         error: (err, _) => Center(
-          child: Text('SYSTEM ERROR: $err', style: const TextStyle(color: Colors.redAccent)),
+          child: Text(
+            'SYSTEM ERROR: $err',
+            style: const TextStyle(color: Colors.redAccent),
+          ),
         ),
         data: (level) {
-          final markdownData = (level.contentMarkdown != null && level.contentMarkdown!.isNotEmpty)
+          final markdownData =
+              (level.contentMarkdown != null &&
+                  level.contentMarkdown!.isNotEmpty)
               ? level.contentMarkdown!
               : '### Scope of Assessment\n\n*No briefing data found for the mock exam pool.*';
 
@@ -62,7 +69,8 @@ class MockExamBriefingScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        level.description ?? 'Prove your mastery in the final challenge.',
+                        level.description ??
+                            'Prove your mastery in the final challenge.',
                         style: const TextStyle(
                           color: AppTheme.textGrey,
                           fontSize: 16,
@@ -75,17 +83,35 @@ class MockExamBriefingScreen extends ConsumerWidget {
                       MarkdownBody(
                         data: markdownData,
                         styleSheet: MarkdownStyleSheet(
-                          h1: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                          h2: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          h1: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          h2: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                           h3: const TextStyle(
                             color: Colors.amberAccent,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2,
                           ),
-                          p: const TextStyle(color: AppTheme.textGrey, fontSize: 14, height: 1.6),
-                          listBullet: const TextStyle(color: Colors.amber, fontSize: 16),
-                          strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          p: const TextStyle(
+                            color: AppTheme.textGrey,
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
+                          listBullet: const TextStyle(
+                            color: Colors.amber,
+                            fontSize: 16,
+                          ),
+                          strong: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                           code: TextStyle(
                             backgroundColor: Colors.black.withOpacity(0.5),
                             color: Colors.amberAccent,
@@ -98,9 +124,14 @@ class MockExamBriefingScreen extends ConsumerWidget {
                           ),
                           blockquoteDecoration: BoxDecoration(
                             color: Colors.amber.withOpacity(0.08),
-                            border: const Border(left: BorderSide(color: Colors.amber, width: 4)),
+                            border: const Border(
+                              left: BorderSide(color: Colors.amber, width: 4),
+                            ),
                           ),
-                          blockquote: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+                          blockquote: const TextStyle(
+                            color: Colors.white,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
                     ],
@@ -111,7 +142,9 @@ class MockExamBriefingScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: AppTheme.background,
-                  border: const Border(top: BorderSide(color: AppTheme.border, width: 1)),
+                  border: const Border(
+                    top: BorderSide(color: AppTheme.border, width: 1),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.amber.withOpacity(0.08),
@@ -130,12 +163,16 @@ class MockExamBriefingScreen extends ConsumerWidget {
                         child: const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                     error: (_, __) => _buildButtons(context, isAdmin: false),
-                    data: (gate) => _buildButtons(context, isAdmin: gate.isAdmin),
+                    data: (gate) =>
+                        _buildButtons(context, isAdmin: gate.isAdmin),
                   ),
                 ),
               ),
@@ -155,7 +192,11 @@ class MockExamBriefingScreen extends ConsumerWidget {
         style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
         child: const Text(
           'START MOCK EXAM',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
         ),
       ),
     );
@@ -170,9 +211,17 @@ class MockExamBriefingScreen extends ConsumerWidget {
           width: double.infinity,
           height: 52,
           child: OutlinedButton.icon(
-            onPressed: () => context.push('/level/$kMockExamPoolLevelId/questions'),
-            icon: const Icon(Icons.visibility, color: Colors.amberAccent, size: 18),
-            label: const Text('VIEW QUESTION POOL', style: TextStyle(color: Colors.amberAccent)),
+            onPressed: () =>
+                context.push('/level/$kMockExamPoolLevelId/questions'),
+            icon: const Icon(
+              Icons.visibility,
+              color: Colors.amberAccent,
+              size: 18,
+            ),
+            label: const Text(
+              'VIEW QUESTION POOL',
+              style: TextStyle(color: Colors.amberAccent),
+            ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.amberAccent),
             ),
@@ -182,4 +231,3 @@ class MockExamBriefingScreen extends ConsumerWidget {
     );
   }
 }
-

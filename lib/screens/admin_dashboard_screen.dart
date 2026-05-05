@@ -9,19 +9,22 @@ import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
 // Providers to fetch dropdown data for the Questions Manager
-final adminLevelsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return await ref.read(supabaseServiceProvider).getLevels();
-});
+final adminLevelsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      return await ref.read(supabaseServiceProvider).getLevels();
+    });
 
-final adminSkillsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return await ref.read(supabaseServiceProvider).getAllSkillAreas();
-});
+final adminSkillsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      return await ref.read(supabaseServiceProvider).getAllSkillAreas();
+    });
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+  ConsumerState<AdminDashboardScreen> createState() =>
+      _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
@@ -90,7 +93,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           children: [
             Icon(Icons.admin_panel_settings, color: adminCyan, size: 20),
             SizedBox(width: 8),
-            Text('OVERRIDE MODE', style: TextStyle(color: adminCyan, fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            Text(
+              'OVERRIDE MODE',
+              style: TextStyle(
+                color: adminCyan,
+                fontSize: 14,
+                letterSpacing: 2,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         centerTitle: true,
@@ -110,8 +121,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.layers), label: 'Manage Levels'),
-          BottomNavigationBarItem(icon: Icon(Icons.question_answer), label: 'Manage Questions'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.layers),
+            label: 'Manage Levels',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.question_answer),
+            label: 'Manage Questions',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.key), label: 'Access Codes'),
         ],
       ),
@@ -125,60 +142,109 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final orderCtrl = TextEditingController();
-    final passCtrl = TextEditingController(text: '80'); // Default Passing Threshold
+    final passCtrl = TextEditingController(
+      text: '80',
+    ); // Default Passing Threshold
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Create New Level', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text(
+            'Create New Level',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Define the chapters and passing thresholds.', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+          const Text(
+            'Define the chapters and passing thresholds.',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+          ),
           const SizedBox(height: 32),
-          
+
           _buildAdminTextField(titleCtrl, 'Level Title', Icons.title),
           const SizedBox(height: 16),
-          _buildAdminTextField(descCtrl, 'Description', Icons.description, maxLines: 3),
+          _buildAdminTextField(
+            descCtrl,
+            'Description',
+            Icons.description,
+            maxLines: 3,
+          ),
           const SizedBox(height: 16),
-          
+
           Row(
             children: [
-              Expanded(child: _buildAdminTextField(orderCtrl, 'Level Order (e.g. 1)', Icons.format_list_numbered, isNumber: true)),
+              Expanded(
+                child: _buildAdminTextField(
+                  orderCtrl,
+                  'Level Order (e.g. 1)',
+                  Icons.format_list_numbered,
+                  isNumber: true,
+                ),
+              ),
               const SizedBox(width: 16),
-              Expanded(child: _buildAdminTextField(passCtrl, 'Pass Threshold %', Icons.percent, isNumber: true)),
+              Expanded(
+                child: _buildAdminTextField(
+                  passCtrl,
+                  'Pass Threshold %',
+                  Icons.percent,
+                  isNumber: true,
+                ),
+              ),
             ],
           ),
-          
+
           const SizedBox(height: 40),
-          
+
           ElevatedButton(
             onPressed: () async {
               if (titleCtrl.text.isEmpty || orderCtrl.text.isEmpty) return;
               try {
-                await ref.read(supabaseServiceProvider).addLevel(
-                  title: titleCtrl.text,
-                  description: descCtrl.text,
-                  levelOrder: int.parse(orderCtrl.text),
-                  passingPercentage: int.parse(passCtrl.text),
-                );
+                await ref
+                    .read(supabaseServiceProvider)
+                    .addLevel(
+                      title: titleCtrl.text,
+                      description: descCtrl.text,
+                      levelOrder: int.parse(orderCtrl.text),
+                      passingPercentage: int.parse(passCtrl.text),
+                    );
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Level created successfully!'), backgroundColor: adminCyan, behavior: SnackBarBehavior.floating));
-                  titleCtrl.clear(); descCtrl.clear(); orderCtrl.clear();
-                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Level created successfully!'),
+                      backgroundColor: adminCyan,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  titleCtrl.clear();
+                  descCtrl.clear();
+                  orderCtrl.clear();
+
                   // Instantly refresh the admin dropdowns and user dashboard
-                  ref.invalidate(adminLevelsProvider); 
-                  ref.invalidate(userJourneyProvider); 
+                  ref.invalidate(adminLevelsProvider);
+                  ref.invalidate(userJourneyProvider);
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
                 }
               }
             },
             style: _adminButtonStyle(),
-            child: const Text('DEPLOY LEVEL', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-          )
+            child: const Text(
+              'DEPLOY LEVEL',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
+            ),
+          ),
         ],
       ),
     );
@@ -187,7 +253,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // ==========================================
   // 2. QUESTIONS MANAGER (MAPPED TO SKILLS)
   // ==========================================
-  
+
   // State variables for Questions Form
   String? _selectedLevelId;
   String? _selectedSkillId;
@@ -211,16 +277,30 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Content & Skill Mapping', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text(
+            'Content & Skill Mapping',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Add questions and map them to the Skill Tree.', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+          const Text(
+            'Add questions and map them to the Skill Tree.',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+          ),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => context.push('/level/$kMockExamPoolLevelId/questions'),
+              onPressed: () =>
+                  context.push('/level/$kMockExamPoolLevelId/questions'),
               icon: const Icon(Icons.visibility, color: adminCyan, size: 18),
-              label: const Text('Preview Mock Exam Pool', style: TextStyle(color: adminCyan)),
+              label: const Text(
+                'Preview Mock Exam Pool',
+                style: TextStyle(color: adminCyan),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -230,12 +310,25 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               Expanded(
                 child: levelsAsync.when(
-                  loading: () => const CircularProgressIndicator(color: adminCyan),
-                  error: (e, _) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
+                  loading: () =>
+                      const CircularProgressIndicator(color: adminCyan),
+                  error: (e, _) => Text(
+                    'Error: $e',
+                    style: const TextStyle(color: Colors.red),
+                  ),
                   data: (levels) => _buildDropdown(
                     hint: 'Select Level',
                     value: _selectedLevelId,
-                    items: levels.map((l) => DropdownMenuItem(value: l['id'].toString(), child: Text('Lvl ${l['level_order']}: ${l['title']}'))).toList(),
+                    items: levels
+                        .map(
+                          (l) => DropdownMenuItem(
+                            value: l['id'].toString(),
+                            child: Text(
+                              'Lvl ${l['level_order']}: ${l['title']}',
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) => setState(() => _selectedLevelId = val),
                   ),
                 ),
@@ -247,12 +340,23 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               Expanded(
                 child: skillsAsync.when(
-                  loading: () => const CircularProgressIndicator(color: adminCyan),
-                  error: (e, _) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
+                  loading: () =>
+                      const CircularProgressIndicator(color: adminCyan),
+                  error: (e, _) => Text(
+                    'Error: $e',
+                    style: const TextStyle(color: Colors.red),
+                  ),
                   data: (skills) => _buildDropdown(
                     hint: 'Map to Skill Area',
                     value: _selectedSkillId,
-                    items: skills.map((s) => DropdownMenuItem(value: s['id'].toString(), child: Text(s['title'].toString()))).toList(),
+                    items: skills
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s['id'].toString(),
+                            child: Text(s['title'].toString()),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) => setState(() => _selectedSkillId = val),
                   ),
                 ),
@@ -262,19 +366,43 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const SizedBox(height: 24),
 
           // --- QUESTION TEXT ---
-          _buildAdminTextField(_questionCtrl, 'Question Text', Icons.help_outline, maxLines: 3),
+          _buildAdminTextField(
+            _questionCtrl,
+            'Question Text',
+            Icons.help_outline,
+            maxLines: 3,
+          ),
           const SizedBox(height: 12),
-          _buildAdminTextField(_explanationCtrl, 'Explanation (optional)', Icons.lightbulb_outline, maxLines: 3),
+          _buildAdminTextField(
+            _explanationCtrl,
+            'Explanation (optional)',
+            Icons.lightbulb_outline,
+            maxLines: 3,
+          ),
           const SizedBox(height: 12),
-          _buildAdminTextField(_imageUrlCtrl, 'Image URL (optional)', Icons.image_outlined),
+          _buildAdminTextField(
+            _imageUrlCtrl,
+            'Image URL (optional)',
+            Icons.image_outlined,
+          ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Answer Options', style: TextStyle(color: adminCyan, fontSize: 14, fontWeight: FontWeight.bold)),
+              const Text(
+                'Answer Options',
+                style: TextStyle(
+                  color: adminCyan,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               Row(
                 children: [
-                  const Text('Multi-correct', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+                  const Text(
+                    'Multi-correct',
+                    style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+                  ),
                   Switch(
                     value: _isMultiCorrect,
                     activeColor: adminCyan,
@@ -295,13 +423,29 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           // --- OPTIONS ---
           Column(
             children: [
-              _buildOptionRow(index: 0, controller: _opt1Ctrl, hint: 'Option A'),
+              _buildOptionRow(
+                index: 0,
+                controller: _opt1Ctrl,
+                hint: 'Option A',
+              ),
               const SizedBox(height: 12),
-              _buildOptionRow(index: 1, controller: _opt2Ctrl, hint: 'Option B'),
+              _buildOptionRow(
+                index: 1,
+                controller: _opt2Ctrl,
+                hint: 'Option B',
+              ),
               const SizedBox(height: 12),
-              _buildOptionRow(index: 2, controller: _opt3Ctrl, hint: 'Option C'),
+              _buildOptionRow(
+                index: 2,
+                controller: _opt3Ctrl,
+                hint: 'Option C',
+              ),
               const SizedBox(height: 12),
-              _buildOptionRow(index: 3, controller: _opt4Ctrl, hint: 'Option D'),
+              _buildOptionRow(
+                index: 3,
+                controller: _opt4Ctrl,
+                hint: 'Option D',
+              ),
             ],
           ),
 
@@ -310,14 +454,21 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ElevatedButton(
             onPressed: _submitQuestion,
             style: _adminButtonStyle(),
-            child: const Text('DEPLOY QUESTION', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-          )
+            child: const Text(
+              'DEPLOY QUESTION',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildOptionRow({required int index, required TextEditingController controller, required String hint}) {
+  Widget _buildOptionRow({
+    required int index,
+    required TextEditingController controller,
+    required String hint,
+  }) {
     return Row(
       children: [
         if (_isMultiCorrect)
@@ -344,14 +495,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             fillColor: WidgetStateProperty.resolveWith((states) => adminCyan),
           ),
         Expanded(
-          child: _buildAdminTextField(controller, hint, Icons.short_text, onChanged: (val) {
-            // Update radio value if this was the selected correct answer
-            if (!_isMultiCorrect) {
-              if (_correctOptionValue == controller.text) {
-                setState(() => _correctOptionValue = val);
+          child: _buildAdminTextField(
+            controller,
+            hint,
+            Icons.short_text,
+            onChanged: (val) {
+              // Update radio value if this was the selected correct answer
+              if (!_isMultiCorrect) {
+                if (_correctOptionValue == controller.text) {
+                  setState(() => _correctOptionValue = val);
+                }
               }
-            }
-          }),
+            },
+          ),
         ),
       ],
     );
@@ -368,7 +524,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         children: [
           const Text(
             'Learner Access Codes',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -376,14 +536,31 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
           ),
           const SizedBox(height: 32),
-          _buildAdminTextField(_accessEmailCtrl, 'Student Email (e.g. student@school.com)', Icons.email_outlined),
+          _buildAdminTextField(
+            _accessEmailCtrl,
+            'Student Email (e.g. student@school.com)',
+            Icons.email_outlined,
+          ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _isGeneratingCode ? null : _generateAndCopyCode,
             style: _adminButtonStyle(),
             child: _isGeneratingCode
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: adminCyan))
-                : const Text('GENERATE CODE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: adminCyan,
+                    ),
+                  )
+                : const Text(
+                    'GENERATE CODE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -393,14 +570,20 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   String _randomCode({int length = 16}) {
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rand = Random.secure();
-    return List.generate(length, (_) => alphabet[rand.nextInt(alphabet.length)]).join();
+    return List.generate(
+      length,
+      (_) => alphabet[rand.nextInt(alphabet.length)],
+    ).join();
   }
 
   Future<void> _generateAndCopyCode() async {
     final email = _accessEmailCtrl.text.trim().toLowerCase();
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid student email.'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Enter a valid student email.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
@@ -409,17 +592,20 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     try {
       final code = _randomCode(length: 18);
       final supabase = Supabase.instance.client;
-      final result = await supabase.rpc('create_access_code', params: {
-        'p_email': email,
-        'p_code': code,
-      });
+      final result = await supabase.rpc(
+        'create_access_code',
+        params: {'p_email': email, 'p_code': code},
+      );
 
       if (!mounted) return;
 
       final ok = (result is Map && result['ok'] == true);
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create code: ${result.toString()}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Failed to create code: ${result.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
         return;
       }
@@ -431,8 +617,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF131B24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Access Code Created', style: TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Access Code Created',
+            style: TextStyle(color: Colors.white),
+          ),
           content: Row(
             children: [
               Expanded(
@@ -466,7 +657,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close', style: TextStyle(color: Colors.white70)),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: Colors.white70),
+              ),
             ),
           ],
         ),
@@ -482,16 +676,31 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Future<void> _submitQuestion() async {
-    if (_selectedLevelId == null || _selectedSkillId == null || _questionCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields and select a correct answer.'), backgroundColor: Colors.redAccent));
+    if (_selectedLevelId == null ||
+        _selectedSkillId == null ||
+        _questionCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all fields and select a correct answer.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
       return;
     }
 
     // Compile options, ignoring empty ones
-    final options = [_opt1Ctrl.text, _opt2Ctrl.text, _opt3Ctrl.text, _opt4Ctrl.text].where((o) => o.isNotEmpty).toList();
+    final options = [
+      _opt1Ctrl.text,
+      _opt2Ctrl.text,
+      _opt3Ctrl.text,
+      _opt4Ctrl.text,
+    ].where((o) => o.isNotEmpty).toList();
     if (options.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least 2 answer options.'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Add at least 2 answer options.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
@@ -507,7 +716,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           .toList();
       if (selected.length < 2) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Select at least 2 correct options for multi-correct questions.'), backgroundColor: Colors.redAccent),
+          const SnackBar(
+            content: Text(
+              'Select at least 2 correct options for multi-correct questions.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
         );
         return;
       }
@@ -516,7 +730,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     } else {
       if (_correctOptionValue == null || _correctOptionValue!.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Select the correct answer.'), backgroundColor: Colors.redAccent),
+          const SnackBar(
+            content: Text('Select the correct answer.'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
         return;
       }
@@ -525,20 +742,32 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
 
     try {
-      await ref.read(supabaseServiceProvider).addQuestion(
-        levelId: _selectedLevelId!,
-        skillAreaId: _selectedSkillId!,
-        questionText: _questionCtrl.text,
-        answerOptions: options,
-        correctAnswer: correctAnswer,
-        questionType: _isMultiCorrect ? 'multi' : 'single',
-        correctAnswers: correctAnswers,
-        explanation: _explanationCtrl.text.trim().isEmpty ? null : _explanationCtrl.text.trim(),
-        imageUrl: _imageUrlCtrl.text.trim().isEmpty ? null : _imageUrlCtrl.text.trim(),
-      );
+      await ref
+          .read(supabaseServiceProvider)
+          .addQuestion(
+            levelId: _selectedLevelId!,
+            skillAreaId: _selectedSkillId!,
+            questionText: _questionCtrl.text,
+            answerOptions: options,
+            correctAnswer: correctAnswer,
+            questionType: _isMultiCorrect ? 'multi' : 'single',
+            correctAnswers: correctAnswers,
+            explanation: _explanationCtrl.text.trim().isEmpty
+                ? null
+                : _explanationCtrl.text.trim(),
+            imageUrl: _imageUrlCtrl.text.trim().isEmpty
+                ? null
+                : _imageUrlCtrl.text.trim(),
+          );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Question successfully mapped and deployed!'), backgroundColor: adminCyan, behavior: SnackBarBehavior.floating));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Question successfully mapped and deployed!'),
+            backgroundColor: adminCyan,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         _questionCtrl.clear();
         _opt1Ctrl.clear();
         _opt2Ctrl.clear();
@@ -553,18 +782,30 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         });
 
         // Instantly refresh the user dashboard
-        ref.invalidate(userJourneyProvider); 
+        ref.invalidate(userJourneyProvider);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     }
   }
 
   // --- REUSABLE WIDGETS ---
 
-  Widget _buildAdminTextField(TextEditingController controller, String hint, IconData icon, {int maxLines = 1, bool isNumber = false, Function(String)? onChanged}) {
+  Widget _buildAdminTextField(
+    TextEditingController controller,
+    String hint,
+    IconData icon, {
+    int maxLines = 1,
+    bool isNumber = false,
+    Function(String)? onChanged,
+  }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
@@ -574,22 +815,33 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.textGrey),
-        prefixIcon: Icon(icon, color: adminCyan.withValues(alpha:0.5)),
+        prefixIcon: Icon(icon, color: adminCyan.withValues(alpha: 0.5)),
         filled: true,
         fillColor: const Color(0xFF131B24),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border.withValues(alpha:0.5))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: adminCyan, width: 2)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.border.withValues(alpha: 0.5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: adminCyan, width: 2),
+        ),
       ),
     );
   }
 
-  Widget _buildDropdown({required String hint, required String? value, required List<DropdownMenuItem<String>> items, required void Function(String?) onChanged}) {
+  Widget _buildDropdown({
+    required String hint,
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFF131B24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border.withValues(alpha:0.5)),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -608,7 +860,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   ButtonStyle _adminButtonStyle() {
     return ElevatedButton.styleFrom(
-      backgroundColor: adminCyan.withValues(alpha:0.1),
+      backgroundColor: adminCyan.withValues(alpha: 0.1),
       foregroundColor: adminCyan,
       side: const BorderSide(color: adminCyan, width: 2),
       minimumSize: const Size(double.infinity, 56),

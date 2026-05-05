@@ -7,11 +7,15 @@ import '../core/theme.dart';
 import '../services/supabase_service.dart';
 
 // Import our new brain
-import '../providers/game_state_provider.dart'; 
+import '../providers/game_state_provider.dart';
 
-final levelQuestionsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, levelId) async {
-  return ref.read(supabaseServiceProvider).getQuestionsForLevel(levelId);
-});
+final levelQuestionsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((
+      ref,
+      levelId,
+    ) async {
+      return ref.read(supabaseServiceProvider).getQuestionsForLevel(levelId);
+    });
 
 class LevelScreen extends ConsumerStatefulWidget {
   final String levelId;
@@ -26,16 +30,17 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
   int? _selectedIndex;
   final Set<int> _selectedMulti = <int>{};
   bool _hasSubmitted = false;
-  bool _isSavingProgress = false; 
+  bool _isSavingProgress = false;
   int _score = 0;
-  
+
   // NEW: List to keep track of every attempt in this session
   final List<Map<String, dynamic>> _questionAttempts = [];
 
   void _submitAnswer(List<Map<String, dynamic>> questions) {
     final currentQuestion = questions[_currentIndex];
     final options = currentQuestion['answer_options'] as List<dynamic>;
-    final questionType = (currentQuestion['question_type'] ?? 'single').toString();
+    final questionType = (currentQuestion['question_type'] ?? 'single')
+        .toString();
 
     bool passed = false;
     if (questionType == 'multi') {
@@ -47,13 +52,15 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
           .where((i) => i >= 0 && i < options.length)
           .map((i) => options[i].toString())
           .toSet();
-      passed = selectedAnswers.isNotEmpty &&
+      passed =
+          selectedAnswers.isNotEmpty &&
           correctAnswers.isNotEmpty &&
           selectedAnswers.length == correctAnswers.length &&
           selectedAnswers.containsAll(correctAnswers);
     } else {
       if (_selectedIndex == null) return;
-      final String correctAnswerText = (currentQuestion['correct_answer'] ?? '').toString();
+      final String correctAnswerText = (currentQuestion['correct_answer'] ?? '')
+          .toString();
       passed = options[_selectedIndex!] == correctAnswerText;
     }
 
@@ -63,7 +70,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
       'skill_area_id': currentQuestion['skill_area_id'],
       'passed': passed,
     });
-    
+
     setState(() {
       _hasSubmitted = true;
       if (passed) {
@@ -85,36 +92,50 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
 
       // 1. Send all our recorded attempts to the database for Skill Mastery
       if (_questionAttempts.isNotEmpty) {
-        await ref.read(supabaseServiceProvider).saveQuestionAttempts(_questionAttempts);
+        await ref
+            .read(supabaseServiceProvider)
+            .saveQuestionAttempts(_questionAttempts);
       }
 
       final double percentage = (_score / totalQuestions) * 100;
-      
+
       // 2. Fetch the actual Level object to get dynamic rules (like passing_percentage)
       final levels = await ref.read(levelsProvider.future);
       final currentLevel = levels.firstWhere((l) => l.id == widget.levelId);
 
       // 3. Let our central GameStateNotifier handle the DB upserts and unlocks
-      final passed = await ref.read(gameStateProvider.notifier).evaluateAndUnlockNextLevel(
-        currentLevel: currentLevel,
-        scorePercentage: percentage,
-      );
+      final passed = await ref
+          .read(gameStateProvider.notifier)
+          .evaluateAndUnlockNextLevel(
+            currentLevel: currentLevel,
+            scorePercentage: percentage,
+          );
 
       if (mounted) {
         setState(() => _isSavingProgress = false);
-        _showLevelCompleteDialog(totalQuestions, passed, currentLevel.passingPercentage);
+        _showLevelCompleteDialog(
+          totalQuestions,
+          passed,
+          currentLevel.passingPercentage,
+        );
       }
     }
   }
 
-  void _showLevelCompleteDialog(int totalQuestions, bool passed, int requiredPercentage) {
+  void _showLevelCompleteDialog(
+    int totalQuestions,
+    bool passed,
+    int requiredPercentage,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           backgroundColor: AppTheme.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -126,7 +147,11 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
               const SizedBox(height: 16),
               Text(
                 passed ? 'Gate Cleared!' : 'Gate Failed',
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -137,26 +162,29 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'A $requiredPercentage% score is required to unlock the next level.', 
+                    'A $requiredPercentage% score is required to unlock the next level.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
                   // Invalidate journey and skill mastery so the dashboard updates
-                  ref.invalidate(userJourneyProvider); 
+                  ref.invalidate(userJourneyProvider);
                   ref.invalidate(skillMasteryProvider);
 
                   context.pop(); // Close the dialog
 
                   if (passed) {
                     // Success: Return to dashboard
-                    context.go('/dashboard'); 
+                    context.go('/dashboard');
                   } else {
                     // 🚨 BUG FIX: Failure: Wipe state and instantly restart this exact level 🚨
-                    ref.invalidate(levelQuestionsProvider(widget.levelId)); 
+                    ref.invalidate(levelQuestionsProvider(widget.levelId));
                     setState(() {
                       _currentIndex = 0;
                       _score = 0;
@@ -171,7 +199,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                   backgroundColor: passed ? AppTheme.primary : AppTheme.border,
                 ),
                 child: Text(passed ? 'Continue Journey' : 'Try Again'),
-              )
+              ),
             ],
           ),
         );
@@ -187,17 +215,31 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
       backgroundColor: AppTheme.background,
       body: SafeArea(
         child: questionsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-          error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primary),
+          ),
+          error: (err, stack) => Center(
+            child: Text(
+              'Error: $err',
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
           data: (questions) {
             if (questions.isEmpty) {
-              return const Center(child: Text('No questions found.', style: TextStyle(color: Colors.white)));
+              return const Center(
+                child: Text(
+                  'No questions found.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              );
             }
 
             final currentQuestion = questions[_currentIndex];
             final List<dynamic> options = currentQuestion['answer_options'];
-            final questionType = (currentQuestion['question_type'] ?? 'single').toString();
-            final String correctAnswerText = (currentQuestion['correct_answer'] ?? '').toString();
+            final questionType = (currentQuestion['question_type'] ?? 'single')
+                .toString();
+            final String correctAnswerText =
+                (currentQuestion['correct_answer'] ?? '').toString();
             final int correctIndex = options.indexOf(correctAnswerText);
             final correctRaw = currentQuestion['correct_answers'];
             final Set<String> correctAnswersSet = (correctRaw is List)
@@ -208,7 +250,10 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -227,8 +272,14 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Text('${_currentIndex + 1}/${questions.length}', 
-                        style: const TextStyle(color: AppTheme.textGrey, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${_currentIndex + 1}/${questions.length}',
+                        style: const TextStyle(
+                          color: AppTheme.textGrey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -238,29 +289,55 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('SECURITY GATE', style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                        const Text(
+                          'SECURITY GATE',
+                          style: TextStyle(
+                            color: AppTheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        
+
                         // --- HIGH-PERFORMANCE IMAGE RENDERER START ---
-                        if (currentQuestion['image_url'] != null && currentQuestion['image_url'].toString().isNotEmpty)
+                        if (currentQuestion['image_url'] != null &&
+                            currentQuestion['image_url'].toString().isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 24.0),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: CachedNetworkImage(
-                                imageUrl: currentQuestion['image_url'].toString(),
+                                imageUrl: currentQuestion['image_url']
+                                    .toString(),
                                 fit: BoxFit.contain,
                                 placeholder: (context, url) => const SizedBox(
-                                  height: 100, 
-                                  child: Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                                  height: 100,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
                                 ),
-                                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50, color: Colors.white54),
+                                errorWidget: (context, url, error) =>
+                                    const Icon(
+                                      Icons.broken_image,
+                                      size: 50,
+                                      color: Colors.white54,
+                                    ),
                               ),
                             ),
                           ),
-                        // --- HIGH-PERFORMANCE IMAGE RENDERER END ---
 
-                        Text(currentQuestion['question_text'] as String, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600)),
+                        // --- HIGH-PERFORMANCE IMAGE RENDERER END ---
+                        Text(
+                          currentQuestion['question_text'] as String,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 40),
                         ...List.generate(options.length, (index) {
                           return _buildOptionCard(
@@ -275,7 +352,14 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                     ),
                   ),
                 ),
-                _buildBottomAction(questionType, correctIndex, correctAnswersSet, currentQuestion['explanation'] ?? '', options, questions),
+                _buildBottomAction(
+                  questionType,
+                  correctIndex,
+                  correctAnswersSet,
+                  currentQuestion['explanation'] ?? '',
+                  options,
+                  questions,
+                ),
               ],
             );
           },
@@ -291,8 +375,12 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     required bool isMulti,
     required Set<String> correctAnswers,
   }) {
-    final isSelected = isMulti ? _selectedMulti.contains(index) : _selectedIndex == index;
-    final isCorrect = isMulti ? correctAnswers.contains(text) : index == correctIndex;
+    final isSelected = isMulti
+        ? _selectedMulti.contains(index)
+        : _selectedIndex == index;
+    final isCorrect = isMulti
+        ? correctAnswers.contains(text)
+        : index == correctIndex;
 
     Color borderColor = AppTheme.border;
     Color bgColor = AppTheme.surface;
@@ -356,7 +444,9 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
                   size: 18,
                   color: isSelected ? AppTheme.primary : AppTheme.textGrey,
                 ),
@@ -370,7 +460,12 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                     Icon(leadingIcon, size: 16, color: leadingColor),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(child: Text(text, style: TextStyle(color: textColor, fontSize: 16))),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: TextStyle(color: textColor, fontSize: 16),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -389,7 +484,9 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     List<Map<String, dynamic>> questions,
   ) {
     if (!_hasSubmitted) {
-      final canSubmit = (questionType == 'multi') ? _selectedMulti.isNotEmpty : _selectedIndex != null;
+      final canSubmit = (questionType == 'multi')
+          ? _selectedMulti.isNotEmpty
+          : _selectedIndex != null;
       return Container(
         padding: const EdgeInsets.all(24.0),
         child: ElevatedButton(
@@ -405,7 +502,8 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
           .where((i) => i >= 0 && i < options.length)
           .map((i) => options[i].toString())
           .toSet();
-      gotItRight = selectedAnswers.isNotEmpty &&
+      gotItRight =
+          selectedAnswers.isNotEmpty &&
           correctAnswersSet.isNotEmpty &&
           selectedAnswers.length == correctAnswersSet.length &&
           selectedAnswers.containsAll(correctAnswersSet);
@@ -415,20 +513,40 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
 
     return Container(
       padding: const EdgeInsets.all(24.0),
-      color: gotItRight ? Colors.green.withValues(alpha:0.1) : Colors.red.withValues(alpha:0.1),
+      color: gotItRight
+          ? Colors.green.withValues(alpha: 0.1)
+          : Colors.red.withValues(alpha: 0.1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(gotItRight ? 'Correct!' : 'Incorrect', style: TextStyle(color: gotItRight ? Colors.greenAccent : Colors.redAccent, fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            gotItRight ? 'Correct!' : 'Incorrect',
+            style: TextStyle(
+              color: gotItRight ? Colors.greenAccent : Colors.redAccent,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(explanation, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _isSavingProgress ? null : () => _nextQuestion(questions.length),
-            style: ElevatedButton.styleFrom(backgroundColor: gotItRight ? Colors.green : Colors.redAccent),
-            child: _isSavingProgress 
-              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Text('Continue'),
+            onPressed: _isSavingProgress
+                ? null
+                : () => _nextQuestion(questions.length),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: gotItRight ? Colors.green : Colors.redAccent,
+            ),
+            child: _isSavingProgress
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text('Continue'),
           ),
         ],
       ),
@@ -442,8 +560,23 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
         backgroundColor: AppTheme.surface,
         title: const Text('Leave Session?'),
         actions: [
-          TextButton(onPressed: () => context.pop(), child: const Text('Cancel', style: TextStyle(color: AppTheme.textGrey))),
-          TextButton(onPressed: () { context.pop(); context.go('/dashboard'); }, child: const Text('Leave', style: TextStyle(color: Colors.redAccent))),
+          TextButton(
+            onPressed: () => context.pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textGrey),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              context.pop();
+              context.go('/dashboard');
+            },
+            child: const Text(
+              'Leave',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
         ],
       ),
     );

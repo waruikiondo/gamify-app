@@ -5,19 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:confetti/confetti.dart'; 
+import 'package:confetti/confetti.dart';
 import 'package:cached_network_image/cached_network_image.dart'; // <-- NEW CACHING IMPORT
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 import '../services/analytics_service.dart';
 import '../providers/access_gate_provider.dart';
 
-final mockQuestionsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return await ref.read(supabaseServiceProvider).getMockExamQuestions(limit: 20); 
-});
+final mockQuestionsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      return await ref
+          .read(supabaseServiceProvider)
+          .getMockExamQuestions(limit: 20);
+    });
 
 // Provider to check if the user is currently on a 24-hour cooldown
-final examEligibilityProvider = FutureProvider.autoDispose<DateTime?>((ref) async {
+final examEligibilityProvider = FutureProvider.autoDispose<DateTime?>((
+  ref,
+) async {
   return await ref.read(supabaseServiceProvider).getLastFailedExamTime();
 });
 
@@ -28,9 +33,10 @@ class MockExamScreen extends ConsumerStatefulWidget {
   ConsumerState<MockExamScreen> createState() => _MockExamScreenState();
 }
 
-class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBindingObserver {
+class _MockExamScreenState extends ConsumerState<MockExamScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
-  final Map<int, Set<int>> _selectedAnswers = {}; 
+  final Map<int, Set<int>> _selectedAnswers = {};
   bool _isSubmitting = false;
 
   // Final Boss State Variables
@@ -45,16 +51,18 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   bool? _faaPassed;
   bool _followUpSaved = false;
 
-  static const int _examDurationSeconds = 60 * 60; 
+  static const int _examDurationSeconds = 60 * 60;
   int _remainingSeconds = _examDurationSeconds;
   Timer? _timer;
-  
+
   late ConfettiController _confettiController;
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -70,7 +78,10 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      if (_timer != null && _timer!.isActive && !_isExamFinished && !_isSubmitting) {
+      if (_timer != null &&
+          _timer!.isActive &&
+          !_isExamFinished &&
+          !_isSubmitting) {
         _triggerAntiCheatPenalty();
       }
     }
@@ -82,13 +93,15 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
     ref.read(analyticsServiceProvider).trackAntiCheatTriggered();
 
     final questions = ref.read(mockQuestionsProvider).value ?? [];
-    
-    await ref.read(supabaseServiceProvider).saveMockExamResult(
-      score: 0,
-      totalQuestions: questions.length,
-      passed: false,
-      timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
-    );
+
+    await ref
+        .read(supabaseServiceProvider)
+        .saveMockExamResult(
+          score: 0,
+          totalQuestions: questions.length,
+          passed: false,
+          timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
+        );
 
     if (mounted) {
       setState(() {
@@ -97,9 +110,9 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         _didPass = false;
         _finalScore = 0;
         _finalTime = _examDurationSeconds - _remainingSeconds;
-        _weakAreas = ['Exam Protocol Violation']; 
+        _weakAreas = ['Exam Protocol Violation'];
       });
-      
+
       _showAntiCheatDialog();
     }
   }
@@ -110,28 +123,45 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.redAccent, width: 2)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
         title: const Row(
           children: [
             Icon(Icons.gavel, color: Colors.redAccent),
             SizedBox(width: 8),
-            Text('ANTI-CHEAT TRIGGERED', style: TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            Text(
+              'ANTI-CHEAT TRIGGERED',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         content: const Text(
-          'You navigated away from the application during an active Final Boss Exam. This violates exam protocol.\n\nYour exam has been automatically terminated and the 24-hour recovery cooldown has been applied.', 
-          style: TextStyle(color: Colors.white, height: 1.5)
+          'You navigated away from the application during an active Final Boss Exam. This violates exam protocol.\n\nYour exam has been automatically terminated and the 24-hour recovery cooldown has been applied.',
+          style: TextStyle(color: Colors.white, height: 1.5),
         ),
         actions: [
           ElevatedButton(
             onPressed: () {
               ref.invalidate(finalExamStatusProvider);
               ref.invalidate(examEligibilityProvider);
-              context.pop(); 
-              context.go('/dashboard'); 
-            }, 
+              context.pop();
+              context.go('/dashboard');
+            },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Acknowledge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+            child: const Text(
+              'Acknowledge',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -140,7 +170,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   // --- END ANTI-CHEAT ENGINE ---
 
   void _startTimerSafe() {
-    if (_timer != null && _timer!.isActive) return; 
+    if (_timer != null && _timer!.isActive) return;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() => _remainingSeconds--);
@@ -160,7 +190,9 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   List<dynamic> _parseOptions(dynamic rawOptions) {
     if (rawOptions is List) return rawOptions;
     if (rawOptions is String) {
-      try { return jsonDecode(rawOptions); } catch (_) {}
+      try {
+        return jsonDecode(rawOptions);
+      } catch (_) {}
     }
     return [];
   }
@@ -177,7 +209,8 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
       bool isCorrect = false;
 
       final options = _parseOptions(questions[i]['answer_options']);
-      final questionType = (questions[i]['question_type'] ?? 'single').toString();
+      final questionType = (questions[i]['question_type'] ?? 'single')
+          .toString();
 
       final selectedIdxs = _selectedAnswers[i] ?? <int>{};
       final selectedTexts = selectedIdxs
@@ -190,42 +223,51 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         final correctSet = (rawCorrect is List)
             ? rawCorrect.map((e) => e.toString()).toSet()
             : <String>{};
-        isCorrect = selectedTexts.isNotEmpty &&
+        isCorrect =
+            selectedTexts.isNotEmpty &&
             correctSet.isNotEmpty &&
             selectedTexts.length == correctSet.length &&
             selectedTexts.containsAll(correctSet);
       } else {
-        final String correctText = questions[i]['correct_answer']?.toString() ?? '';
-        isCorrect = selectedTexts.length == 1 && selectedTexts.first == correctText;
+        final String correctText =
+            questions[i]['correct_answer']?.toString() ?? '';
+        isCorrect =
+            selectedTexts.length == 1 && selectedTexts.first == correctText;
       }
 
       if (isCorrect) {
         score++;
       } else {
         final dynamic skillData = questions[i]['skill_areas'];
-        final String skillTitle = (skillData != null && skillData['title'] != null) 
-            ? skillData['title'].toString() 
+        final String skillTitle =
+            (skillData != null && skillData['title'] != null)
+            ? skillData['title'].toString()
             : 'Core Concepts';
-        
+
         failedSkills[skillTitle] = (failedSkills[skillTitle] ?? 0) + 1;
       }
     }
 
-    final sortedSkills = failedSkills.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sortedSkills = failedSkills.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final weakAreas = sortedSkills.map((e) => e.key).take(3).toList();
 
     final double percentage = questions.isEmpty ? 0 : score / questions.length;
-    final bool passed = percentage >= 0.8; 
+    final bool passed = percentage >= 0.8;
     final int timeTaken = _examDurationSeconds - _remainingSeconds;
 
-    await ref.read(supabaseServiceProvider).saveMockExamResult(
-      score: score,
-      totalQuestions: questions.length,
-      passed: passed,
-      timeTakenSeconds: timeTaken,
-    );
+    await ref
+        .read(supabaseServiceProvider)
+        .saveMockExamResult(
+          score: score,
+          totalQuestions: questions.length,
+          passed: passed,
+          timeTakenSeconds: timeTaken,
+        );
 
-    ref.read(analyticsServiceProvider).trackExamCompleted(score, passed, timeTaken);
+    ref
+        .read(analyticsServiceProvider)
+        .trackExamCompleted(score, passed, timeTaken);
 
     if (mounted) {
       setState(() {
@@ -236,7 +278,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         _finalTime = timeTaken;
         _weakAreas = weakAreas;
       });
-      
+
       if (passed) {
         _confettiController.play();
       }
@@ -253,10 +295,16 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
       backgroundColor: AppTheme.background,
       body: SafeArea(
         child: eligibilityAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-          error: (err, stack) => Center(child: Text('Error checking eligibility: $err', style: const TextStyle(color: Colors.redAccent))),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primary),
+          ),
+          error: (err, stack) => Center(
+            child: Text(
+              'Error checking eligibility: $err',
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
           data: (lastFailedTime) {
-            
             if (!isAdmin && lastFailedTime != null) {
               final cooldownEnd = lastFailedTime.add(const Duration(hours: 24));
               final now = DateTime.now();
@@ -267,16 +315,31 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
 
             final questionsAsync = ref.watch(mockQuestionsProvider);
             return questionsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-              error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppTheme.primary),
+              ),
+              error: (err, stack) => Center(
+                child: Text(
+                  'Error: $err',
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              ),
               data: (questions) {
-                if (questions.isEmpty) return const Center(child: Text('No mock exam questions available.', style: TextStyle(color: Colors.white)));
+                if (questions.isEmpty)
+                  return const Center(
+                    child: Text(
+                      'No mock exam questions available.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
 
                 if (_isExamFinished) {
                   return _buildResultsScreen(questions.length);
                 }
 
-                WidgetsBinding.instance.addPostFrameCallback((_) => _startTimerSafe());
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _startTimerSafe(),
+                );
 
                 return _buildActiveExam(questions);
               },
@@ -301,13 +364,22 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
             const SizedBox(height: 24),
             const Text(
               'RECOVERY PERIOD',
-              style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
               'You must wait before attempting the Final Exam again. Use this time to review your weak areas in the previous chapters.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textGrey, fontSize: 16, height: 1.5),
+              style: TextStyle(
+                color: AppTheme.textGrey,
+                fontSize: 16,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 32),
             Container(
@@ -319,13 +391,19 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
               ),
               child: Text(
                 'Unlocks in $hours hr $minutes min',
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () => context.pop(),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
               child: const Text('Return to Dashboard'),
             ),
           ],
@@ -335,7 +413,9 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   }
 
   Widget _buildResultsScreen(int totalQuestions) {
-    final int percentage = totalQuestions == 0 ? 0 : ((_finalScore / totalQuestions) * 100).toInt();
+    final int percentage = totalQuestions == 0
+        ? 0
+        : ((_finalScore / totalQuestions) * 100).toInt();
 
     return Stack(
       alignment: Alignment.topCenter,
@@ -356,21 +436,32 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                       child: Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: _didPass ? Colors.greenAccent.withValues(alpha:0.1) : Colors.redAccent.withValues(alpha:0.1),
+                          color: _didPass
+                              ? Colors.greenAccent.withValues(alpha: 0.1)
+                              : Colors.redAccent.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
-                          border: Border.all(color: _didPass ? Colors.greenAccent : Colors.redAccent, width: 4),
+                          border: Border.all(
+                            color: _didPass
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
+                            width: 4,
+                          ),
                         ),
                         child: Icon(
-                          _didPass ? Icons.workspace_premium : Icons.warning_amber_rounded,
-                          color: _didPass ? Colors.greenAccent : Colors.redAccent,
+                          _didPass
+                              ? Icons.workspace_premium
+                              : Icons.warning_amber_rounded,
+                          color: _didPass
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
                           size: 80,
                         ),
                       ),
                     );
-                  }
+                  },
                 ),
                 const SizedBox(height: 32),
-                
+
                 Text(
                   _didPass ? 'READY FOR THE FAA' : 'EXAM FAILED',
                   style: TextStyle(
@@ -381,7 +472,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -394,37 +485,78 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatColumn('Score', '$_finalScore / $totalQuestions', AppTheme.primary),
-                          Container(width: 1, height: 40, color: AppTheme.border),
-                          _buildStatColumn('Grade', '$percentage%', _didPass ? Colors.greenAccent : Colors.redAccent),
-                          Container(width: 1, height: 40, color: AppTheme.border),
-                          _buildStatColumn('Time', _formatTime(_finalTime), AppTheme.textGrey),
+                          _buildStatColumn(
+                            'Score',
+                            '$_finalScore / $totalQuestions',
+                            AppTheme.primary,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: AppTheme.border,
+                          ),
+                          _buildStatColumn(
+                            'Grade',
+                            '$percentage%',
+                            _didPass ? Colors.greenAccent : Colors.redAccent,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: AppTheme.border,
+                          ),
+                          _buildStatColumn(
+                            'Time',
+                            _formatTime(_finalTime),
+                            AppTheme.textGrey,
+                          ),
                         ],
                       ),
-                      
+
                       if (_weakAreas.isNotEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24.0),
                           child: Divider(color: AppTheme.border),
                         ),
-                        const Text('AREAS TO REVIEW', style: TextStyle(color: AppTheme.textGrey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        const SizedBox(height: 16),
-                        
-                        ..._weakAreas.map((skill) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.arrow_right, color: Colors.redAccent),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(skill, style: const TextStyle(color: Colors.white, fontSize: 16))),
-                            ],
+                        const Text(
+                          'AREAS TO REVIEW',
+                          style: TextStyle(
+                            color: AppTheme.textGrey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
                           ),
-                        )),
-                      ]
+                        ),
+                        const SizedBox(height: 16),
+
+                        ..._weakAreas.map(
+                          (skill) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.arrow_right,
+                                  color: Colors.redAccent,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    skill,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
 
                 // --- FAA FOLLOW-UP QUESTIONS (OPTIONAL) ---
@@ -433,23 +565,37 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                    border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.help_outline, color: AppTheme.primary, size: 18),
+                          const Icon(
+                            Icons.help_outline,
+                            color: AppTheme.primary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           const Text(
                             'QUICK CHECK-IN',
-                            style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
                           ),
                           const Spacer(),
                           Text(
                             'Optional',
-                            style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
+                            style: TextStyle(
+                              color: AppTheme.textGrey,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -464,7 +610,8 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                       ),
                       const SizedBox(height: 12),
                       _buildFollowUpQuestion(
-                        question: 'Have you taken the FAA Part 107 exam and passed?',
+                        question:
+                            'Have you taken the FAA Part 107 exam and passed?',
                         value: _faaPassed,
                         onChanged: (val) {
                           setState(() => _faaPassed = val);
@@ -475,17 +622,27 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                         const SizedBox(height: 12),
                         Row(
                           children: const [
-                            Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.greenAccent,
+                              size: 14,
+                            ),
                             SizedBox(width: 6),
-                            Text('Saved — thanks!', style: TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                            Text(
+                              'Saved — thanks!',
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ],
                   ),
                 ),
-                // --- END FAA FOLLOW-UP ---
 
+                // --- END FAA FOLLOW-UP ---
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
@@ -501,7 +658,11 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                   ),
                   child: Text(
                     _didPass ? 'Steps to Get Certified' : 'Return to Training',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -528,27 +689,48 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(question, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4)),
+        Text(
+          question,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
-            _buildYesNoButton(label: 'Yes', selected: value == true, onTap: () => onChanged(true)),
+            _buildYesNoButton(
+              label: 'Yes',
+              selected: value == true,
+              onTap: () => onChanged(true),
+            ),
             const SizedBox(width: 8),
-            _buildYesNoButton(label: 'No', selected: value == false, onTap: () => onChanged(false)),
+            _buildYesNoButton(
+              label: 'No',
+              selected: value == false,
+              onTap: () => onChanged(false),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildYesNoButton({required String label, required bool selected, required VoidCallback onTap}) {
+  Widget _buildYesNoButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary.withOpacity(0.2) : Colors.transparent,
+          color: selected
+              ? AppTheme.primary.withOpacity(0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppTheme.primary : AppTheme.border,
@@ -570,9 +752,19 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   Widget _buildStatColumn(String label, String value, Color valueColor) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+        ),
         const SizedBox(height: 8),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -581,9 +773,13 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
     final currentQuestion = questions[_currentIndex];
     final bool isLastQuestion = _currentIndex == questions.length - 1;
 
-    final String questionText = currentQuestion['question_text']?.toString() ?? '';
-    final List<dynamic> options = _parseOptions(currentQuestion['answer_options']);
-    final questionType = (currentQuestion['question_type'] ?? 'single').toString();
+    final String questionText =
+        currentQuestion['question_text']?.toString() ?? '';
+    final List<dynamic> options = _parseOptions(
+      currentQuestion['answer_options'],
+    );
+    final questionType = (currentQuestion['question_type'] ?? 'single')
+        .toString();
     final selectedSet = _selectedAnswers[_currentIndex] ?? <int>{};
 
     return Column(
@@ -593,23 +789,55 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(icon: const Icon(Icons.close, color: AppTheme.textGrey), onPressed: () => _showExitWarning(questions.length)),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppTheme.textGrey),
+                onPressed: () => _showExitWarning(questions.length),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: _remainingSeconds < 300 ? Colors.redAccent.withValues(alpha:0.2) : AppTheme.surface,
+                  color: _remainingSeconds < 300
+                      ? Colors.redAccent.withValues(alpha: 0.2)
+                      : AppTheme.surface,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _remainingSeconds < 300 ? Colors.redAccent : AppTheme.border),
+                  border: Border.all(
+                    color: _remainingSeconds < 300
+                        ? Colors.redAccent
+                        : AppTheme.border,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.timer, size: 16, color: _remainingSeconds < 300 ? Colors.redAccent : Colors.white),
+                    Icon(
+                      Icons.timer,
+                      size: 16,
+                      color: _remainingSeconds < 300
+                          ? Colors.redAccent
+                          : Colors.white,
+                    ),
                     const SizedBox(width: 8),
-                    Text(_formatTime(_remainingSeconds), style: TextStyle(color: _remainingSeconds < 300 ? Colors.redAccent : Colors.white, fontWeight: FontWeight.bold)),
+                    Text(
+                      _formatTime(_remainingSeconds),
+                      style: TextStyle(
+                        color: _remainingSeconds < 300
+                            ? Colors.redAccent
+                            : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Text('Q ${_currentIndex + 1}/${questions.length}', style: const TextStyle(color: AppTheme.textGrey, fontWeight: FontWeight.bold)),
+              Text(
+                'Q ${_currentIndex + 1}/${questions.length}',
+                style: const TextStyle(
+                  color: AppTheme.textGrey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -619,9 +847,9 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                
                 // --- NEW HIGH-PERFORMANCE IMAGE RENDERER START ---
-                if (currentQuestion['image_url'] != null && currentQuestion['image_url'].toString().isNotEmpty)
+                if (currentQuestion['image_url'] != null &&
+                    currentQuestion['image_url'].toString().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 24.0),
                     child: ClipRRect(
@@ -630,23 +858,39 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                         imageUrl: currentQuestion['image_url'].toString(),
                         fit: BoxFit.contain,
                         placeholder: (context, url) => const SizedBox(
-                          height: 100, 
-                          child: Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                          height: 100,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          ),
                         ),
-                        errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50, color: Colors.white54),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.broken_image,
+                          size: 50,
+                          color: Colors.white54,
+                        ),
                       ),
                     ),
                   ),
-                // --- NEW HIGH-PERFORMANCE IMAGE RENDERER END ---
 
-                Text(questionText, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600)),
+                // --- NEW HIGH-PERFORMANCE IMAGE RENDERER END ---
+                Text(
+                  questionText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 40),
                 ...List.generate(options.length, (index) {
                   final isSelected = selectedSet.contains(index);
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        final current = _selectedAnswers[_currentIndex] ?? <int>{};
+                        final current =
+                            _selectedAnswers[_currentIndex] ?? <int>{};
                         if (questionType == 'multi') {
                           if (current.contains(index)) {
                             current.remove(index);
@@ -663,23 +907,49 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primary.withValues(alpha:0.1) : AppTheme.surface,
+                        color: isSelected
+                            ? AppTheme.primary.withValues(alpha: 0.1)
+                            : AppTheme.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border, width: 2),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.border,
+                          width: 2,
+                        ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            height: 20, width: 20,
+                            height: 20,
+                            width: 20,
                             decoration: BoxDecoration(
-                              shape: questionType == 'multi' ? BoxShape.rectangle : BoxShape.circle,
-                              borderRadius: questionType == 'multi' ? BorderRadius.circular(4) : null,
-                              border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.textGrey),
-                              color: isSelected ? AppTheme.primary : Colors.transparent,
+                              shape: questionType == 'multi'
+                                  ? BoxShape.rectangle
+                                  : BoxShape.circle,
+                              borderRadius: questionType == 'multi'
+                                  ? BorderRadius.circular(4)
+                                  : null,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : AppTheme.textGrey,
+                              ),
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : Colors.transparent,
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Expanded(child: Text(options[index].toString(), style: const TextStyle(color: Colors.white, fontSize: 16))),
+                          Expanded(
+                            child: Text(
+                              options[index].toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -691,20 +961,54 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         ),
         Container(
           padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(color: AppTheme.background, border: Border(top: BorderSide(color: AppTheme.border.withValues(alpha:0.5)))),
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            border: Border(
+              top: BorderSide(color: AppTheme.border.withValues(alpha: 0.5)),
+            ),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               TextButton(
-                onPressed: _currentIndex > 0 ? () => setState(() => _currentIndex--) : null,
-                child: Text('Previous', style: TextStyle(color: _currentIndex > 0 ? AppTheme.textGrey : Colors.transparent)),
+                onPressed: _currentIndex > 0
+                    ? () => setState(() => _currentIndex--)
+                    : null,
+                child: Text(
+                  'Previous',
+                  style: TextStyle(
+                    color: _currentIndex > 0
+                        ? AppTheme.textGrey
+                        : Colors.transparent,
+                  ),
+                ),
               ),
               ElevatedButton(
-                onPressed: isLastQuestion ? () => _submitExam(questions) : () => setState(() => _currentIndex++),
-                style: ElevatedButton.styleFrom(backgroundColor: isLastQuestion ? Colors.amber : AppTheme.primary, minimumSize: const Size(160, 56)),
-                child: _isSubmitting 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(isLastQuestion ? 'Submit Exam' : 'Next Question', style: TextStyle(color: isLastQuestion ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: isLastQuestion
+                    ? () => _submitExam(questions)
+                    : () => setState(() => _currentIndex++),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLastQuestion
+                      ? Colors.amber
+                      : AppTheme.primary,
+                  minimumSize: const Size(160, 56),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        isLastQuestion ? 'Submit Exam' : 'Next Question',
+                        style: TextStyle(
+                          color: isLastQuestion ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -718,10 +1022,13 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) return;
-      await Supabase.instance.client.from('profiles').update({
-        if (_faaScheduled != null) 'faa_exam_scheduled': _faaScheduled,
-        if (_faaPassed != null) 'faa_exam_passed': _faaPassed,
-      }).eq('id', userId);
+      await Supabase.instance.client
+          .from('profiles')
+          .update({
+            if (_faaScheduled != null) 'faa_exam_scheduled': _faaScheduled,
+            if (_faaPassed != null) 'faa_exam_passed': _faaPassed,
+          })
+          .eq('id', userId);
       if (mounted) setState(() => _followUpSaved = true);
     } catch (e) {
       debugPrint('FAA follow-up save failed (columns may not exist yet): $e');
@@ -735,28 +1042,39 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
         backgroundColor: AppTheme.surface,
         title: const Text('Abandon Exam?'),
         content: const Text(
-          'Your progress will be lost and this will trigger a 24-hour cooldown penalty.', 
-          style: TextStyle(color: AppTheme.textGrey)
+          'Your progress will be lost and this will trigger a 24-hour cooldown penalty.',
+          style: TextStyle(color: AppTheme.textGrey),
         ),
         actions: [
-          TextButton(onPressed: () => context.pop(), child: const Text('Cancel', style: TextStyle(color: AppTheme.textGrey))),
+          TextButton(
+            onPressed: () => context.pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textGrey),
+            ),
+          ),
           TextButton(
             onPressed: () async {
               _timer?.cancel();
-              
-              await ref.read(supabaseServiceProvider).saveMockExamResult(
-                score: 0,
-                totalQuestions: totalQuestions,
-                passed: false,
-                timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
-              );
-              
+
+              await ref
+                  .read(supabaseServiceProvider)
+                  .saveMockExamResult(
+                    score: 0,
+                    totalQuestions: totalQuestions,
+                    passed: false,
+                    timeTakenSeconds: _examDurationSeconds - _remainingSeconds,
+                  );
+
               if (context.mounted) {
-                context.pop(); 
-                context.go('/dashboard'); 
+                context.pop();
+                context.go('/dashboard');
               }
-            }, 
-            child: const Text('Abandon', style: TextStyle(color: Colors.redAccent))
+            },
+            child: const Text(
+              'Abandon',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),

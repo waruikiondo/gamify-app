@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../core/theme.dart';
 import '../providers/access_gate_provider.dart';
@@ -62,6 +63,12 @@ class AdminQuestionPreviewScreen extends ConsumerWidget {
                   final text = (q['question_text'] ?? '').toString();
                   final options = (q['answer_options'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
                   final correct = (q['correct_answer'] ?? '').toString();
+                  final imageUrl = (q['image_url'] ?? '').toString().trim();
+                  final type = (q['question_type'] ?? 'single').toString();
+                  final correctRaw = q['correct_answers'];
+                  final correctSet = (correctRaw is List)
+                      ? correctRaw.map((e) => e.toString()).toSet()
+                      : <String>{};
 
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -75,10 +82,28 @@ class AdminQuestionPreviewScreen extends ConsumerWidget {
                       children: [
                         Text('Q${index + 1}', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
+                        if (imageUrl.isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.contain,
+                              placeholder: (context, url) => const SizedBox(
+                                height: 120,
+                                child: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
+                              ),
+                              errorWidget: (context, url, error) => const SizedBox(
+                                height: 120,
+                                child: Center(child: Icon(Icons.broken_image, size: 40, color: Colors.white54)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
                         const SizedBox(height: 12),
                         ...options.map((opt) {
-                          final isCorrect = opt == correct;
+                          final isCorrect = (type == 'multi') ? correctSet.contains(opt) : opt == correct;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 6),
                             child: Row(

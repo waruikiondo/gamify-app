@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart'; // <-- NEW CACH
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
 import '../services/analytics_service.dart';
+import '../providers/access_gate_provider.dart';
 
 final mockQuestionsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return await ref.read(supabaseServiceProvider).getMockExamQuestions(limit: 20); 
@@ -29,7 +30,7 @@ class MockExamScreen extends ConsumerStatefulWidget {
 
 class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
-  final Map<int, int> _selectedAnswers = {}; 
+  final Map<int, Set<int>> _selectedAnswers = {}; 
   bool _isSubmitting = false;
 
   // Final Boss State Variables
@@ -175,13 +176,27 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
     for (int i = 0; i < questions.length; i++) {
       bool isCorrect = false;
 
-      if (_selectedAnswers.containsKey(i)) {
-        final options = _parseOptions(questions[i]['answer_options']);
-        if (options.isNotEmpty && _selectedAnswers[i]! < options.length) {
-          final String selectedText = options[_selectedAnswers[i]!].toString();
-          final String correctText = questions[i]['correct_answer']?.toString() ?? '';
-          if (selectedText == correctText) isCorrect = true;
-        }
+      final options = _parseOptions(questions[i]['answer_options']);
+      final questionType = (questions[i]['question_type'] ?? 'single').toString();
+
+      final selectedIdxs = _selectedAnswers[i] ?? <int>{};
+      final selectedTexts = selectedIdxs
+          .where((idx) => idx >= 0 && idx < options.length)
+          .map((idx) => options[idx].toString())
+          .toSet();
+
+      if (questionType == 'multi') {
+        final rawCorrect = questions[i]['correct_answers'];
+        final correctSet = (rawCorrect is List)
+            ? rawCorrect.map((e) => e.toString()).toSet()
+            : <String>{};
+        isCorrect = selectedTexts.isNotEmpty &&
+            correctSet.isNotEmpty &&
+            selectedTexts.length == correctSet.length &&
+            selectedTexts.containsAll(correctSet);
+      } else {
+        final String correctText = questions[i]['correct_answer']?.toString() ?? '';
+        isCorrect = selectedTexts.length == 1 && selectedTexts.first == correctText;
       }
 
       if (isCorrect) {
@@ -231,6 +246,8 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
   @override
   Widget build(BuildContext context) {
     final eligibilityAsync = ref.watch(examEligibilityProvider);
+    final gateAsync = ref.watch(accessGateStatusProvider);
+    final bool isAdmin = gateAsync.value?.isAdmin ?? false;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -240,7 +257,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
           error: (err, stack) => Center(child: Text('Error checking eligibility: $err', style: const TextStyle(color: Colors.redAccent))),
           data: (lastFailedTime) {
             
-            if (lastFailedTime != null) {
+            if (!isAdmin && lastFailedTime != null) {
               final cooldownEnd = lastFailedTime.add(const Duration(hours: 24));
               final now = DateTime.now();
               if (now.isBefore(cooldownEnd)) {
@@ -566,6 +583,8 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
 
     final String questionText = currentQuestion['question_text']?.toString() ?? '';
     final List<dynamic> options = _parseOptions(currentQuestion['answer_options']);
+    final questionType = (currentQuestion['question_type'] ?? 'single').toString();
+    final selectedSet = _selectedAnswers[_currentIndex] ?? <int>{};
 
     return Column(
       children: [
@@ -623,9 +642,23 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                 Text(questionText, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 40),
                 ...List.generate(options.length, (index) {
-                  final isSelected = _selectedAnswers[_currentIndex] == index;
+                  final isSelected = selectedSet.contains(index);
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedAnswers[_currentIndex] = index),
+                    onTap: () {
+                      setState(() {
+                        final current = _selectedAnswers[_currentIndex] ?? <int>{};
+                        if (questionType == 'multi') {
+                          if (current.contains(index)) {
+                            current.remove(index);
+                          } else {
+                            current.add(index);
+                          }
+                          _selectedAnswers[_currentIndex] = current;
+                        } else {
+                          _selectedAnswers[_currentIndex] = <int>{index};
+                        }
+                      });
+                    },
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(20),
@@ -638,7 +671,12 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> with WidgetsBin
                         children: [
                           Container(
                             height: 20, width: 20,
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.textGrey), color: isSelected ? AppTheme.primary : Colors.transparent),
+                            decoration: BoxDecoration(
+                              shape: questionType == 'multi' ? BoxShape.rectangle : BoxShape.circle,
+                              borderRadius: questionType == 'multi' ? BorderRadius.circular(4) : null,
+                              border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.textGrey),
+                              color: isSelected ? AppTheme.primary : Colors.transparent,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(child: Text(options[index].toString(), style: const TextStyle(color: Colors.white, fontSize: 16))),

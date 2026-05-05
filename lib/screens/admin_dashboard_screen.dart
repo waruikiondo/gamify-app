@@ -39,6 +39,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   @override
   void dispose() {
+    _questionCtrl.dispose();
+    _opt1Ctrl.dispose();
+    _opt2Ctrl.dispose();
+    _opt3Ctrl.dispose();
+    _opt4Ctrl.dispose();
+    _explanationCtrl.dispose();
+    _imageUrlCtrl.dispose();
     _accessEmailCtrl.dispose();
     super.dispose();
   }
@@ -189,7 +196,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   final _opt2Ctrl = TextEditingController();
   final _opt3Ctrl = TextEditingController();
   final _opt4Ctrl = TextEditingController();
+  final _explanationCtrl = TextEditingController();
+  final _imageUrlCtrl = TextEditingController();
   String? _correctOptionValue; // Will hold the exact text of the correct option
+  bool _isMultiCorrect = false;
+  final Set<int> _multiCorrectIndices = <int>{};
 
   Widget _buildQuestionsManager() {
     final levelsAsync = ref.watch(adminLevelsProvider);
@@ -203,6 +214,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const Text('Content & Skill Mapping', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const Text('Add questions and map them to the Skill Tree.', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => context.push('/level/$kMockExamPoolLevelId/questions'),
+              icon: const Icon(Icons.visibility, color: adminCyan, size: 18),
+              label: const Text('Preview Mock Exam Pool', style: TextStyle(color: adminCyan)),
+            ),
+          ),
           const SizedBox(height: 32),
 
           // --- DROPDOWNS ---
@@ -243,25 +263,46 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
           // --- QUESTION TEXT ---
           _buildAdminTextField(_questionCtrl, 'Question Text', Icons.help_outline, maxLines: 3),
+          const SizedBox(height: 12),
+          _buildAdminTextField(_explanationCtrl, 'Explanation (optional)', Icons.lightbulb_outline, maxLines: 3),
+          const SizedBox(height: 12),
+          _buildAdminTextField(_imageUrlCtrl, 'Image URL (optional)', Icons.image_outlined),
           const SizedBox(height: 24),
-          const Text('Answer Options (Select the correct one)', style: TextStyle(color: adminCyan, fontSize: 14, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Answer Options', style: TextStyle(color: adminCyan, fontSize: 14, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  const Text('Multi-correct', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+                  Switch(
+                    value: _isMultiCorrect,
+                    activeColor: adminCyan,
+                    onChanged: (v) {
+                      setState(() {
+                        _isMultiCorrect = v;
+                        _correctOptionValue = null;
+                        _multiCorrectIndices.clear();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
           // --- OPTIONS ---
-          RadioGroup<String>(
-            groupValue: _correctOptionValue,
-            onChanged: (val) => setState(() => _correctOptionValue = val),
-            child: Column(
-              children: [
-                _buildOptionRow(_opt1Ctrl, 'Option A'),
-                const SizedBox(height: 12),
-                _buildOptionRow(_opt2Ctrl, 'Option B'),
-                const SizedBox(height: 12),
-                _buildOptionRow(_opt3Ctrl, 'Option C'),
-                const SizedBox(height: 12),
-                _buildOptionRow(_opt4Ctrl, 'Option D'),
-              ],
-            ),
+          Column(
+            children: [
+              _buildOptionRow(index: 0, controller: _opt1Ctrl, hint: 'Option A'),
+              const SizedBox(height: 12),
+              _buildOptionRow(index: 1, controller: _opt2Ctrl, hint: 'Option B'),
+              const SizedBox(height: 12),
+              _buildOptionRow(index: 2, controller: _opt3Ctrl, hint: 'Option C'),
+              const SizedBox(height: 12),
+              _buildOptionRow(index: 3, controller: _opt4Ctrl, hint: 'Option D'),
+            ],
           ),
 
           const SizedBox(height: 40),
@@ -276,19 +317,39 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildOptionRow(TextEditingController controller, String hint) {
+  Widget _buildOptionRow({required int index, required TextEditingController controller, required String hint}) {
     return Row(
       children: [
-        Radio<String>(
-          value: controller.text,
-          activeColor: adminCyan,
-          fillColor: WidgetStateProperty.resolveWith((states) => adminCyan),
-        ),
+        if (_isMultiCorrect)
+          Checkbox(
+            value: _multiCorrectIndices.contains(index),
+            activeColor: adminCyan,
+            checkColor: Colors.black,
+            onChanged: (v) {
+              setState(() {
+                if (v == true) {
+                  _multiCorrectIndices.add(index);
+                } else {
+                  _multiCorrectIndices.remove(index);
+                }
+              });
+            },
+          )
+        else
+          Radio<String>(
+            value: controller.text,
+            groupValue: _correctOptionValue,
+            onChanged: (val) => setState(() => _correctOptionValue = val),
+            activeColor: adminCyan,
+            fillColor: WidgetStateProperty.resolveWith((states) => adminCyan),
+          ),
         Expanded(
           child: _buildAdminTextField(controller, hint, Icons.short_text, onChanged: (val) {
             // Update radio value if this was the selected correct answer
-            if (_correctOptionValue == controller.text) {
-              setState(() => _correctOptionValue = val);
+            if (!_isMultiCorrect) {
+              if (_correctOptionValue == controller.text) {
+                setState(() => _correctOptionValue = val);
+              }
             }
           }),
         ),
@@ -421,13 +482,47 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Future<void> _submitQuestion() async {
-    if (_selectedLevelId == null || _selectedSkillId == null || _questionCtrl.text.isEmpty || _correctOptionValue == null || _correctOptionValue!.isEmpty) {
+    if (_selectedLevelId == null || _selectedSkillId == null || _questionCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields and select a correct answer.'), backgroundColor: Colors.redAccent));
       return;
     }
 
     // Compile options, ignoring empty ones
     final options = [_opt1Ctrl.text, _opt2Ctrl.text, _opt3Ctrl.text, _opt4Ctrl.text].where((o) => o.isNotEmpty).toList();
+    if (options.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least 2 answer options.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    String? correctAnswer;
+    List<String>? correctAnswers;
+    if (_isMultiCorrect) {
+      final allCtrls = [_opt1Ctrl, _opt2Ctrl, _opt3Ctrl, _opt4Ctrl];
+      final selected = _multiCorrectIndices
+          .where((i) => i >= 0 && i < allCtrls.length)
+          .map((i) => allCtrls[i].text.trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+      if (selected.length < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Select at least 2 correct options for multi-correct questions.'), backgroundColor: Colors.redAccent),
+        );
+        return;
+      }
+      correctAnswers = selected;
+      correctAnswer = null;
+    } else {
+      if (_correctOptionValue == null || _correctOptionValue!.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Select the correct answer.'), backgroundColor: Colors.redAccent),
+        );
+        return;
+      }
+      correctAnswer = _correctOptionValue!;
+      correctAnswers = null;
+    }
 
     try {
       await ref.read(supabaseServiceProvider).addQuestion(
@@ -435,13 +530,27 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         skillAreaId: _selectedSkillId!,
         questionText: _questionCtrl.text,
         answerOptions: options,
-        correctAnswer: _correctOptionValue!,
+        correctAnswer: correctAnswer,
+        questionType: _isMultiCorrect ? 'multi' : 'single',
+        correctAnswers: correctAnswers,
+        explanation: _explanationCtrl.text.trim().isEmpty ? null : _explanationCtrl.text.trim(),
+        imageUrl: _imageUrlCtrl.text.trim().isEmpty ? null : _imageUrlCtrl.text.trim(),
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Question successfully mapped and deployed!'), backgroundColor: adminCyan, behavior: SnackBarBehavior.floating));
-        _questionCtrl.clear(); _opt1Ctrl.clear(); _opt2Ctrl.clear(); _opt3Ctrl.clear(); _opt4Ctrl.clear();
-        setState(() => _correctOptionValue = null);
+        _questionCtrl.clear();
+        _opt1Ctrl.clear();
+        _opt2Ctrl.clear();
+        _opt3Ctrl.clear();
+        _opt4Ctrl.clear();
+        _explanationCtrl.clear();
+        _imageUrlCtrl.clear();
+        setState(() {
+          _correctOptionValue = null;
+          _isMultiCorrect = false;
+          _multiCorrectIndices.clear();
+        });
 
         // Instantly refresh the user dashboard
         ref.invalidate(userJourneyProvider); 

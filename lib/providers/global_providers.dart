@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 
+// Level that holds the Final Mock Exam question pool.
+// We intentionally exclude it from "journey completion" calculations.
+const String kMockExamPoolLevelId = '55555555-5555-5555-5555-555555555555';
+
 final userProfileProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return ref.read(supabaseServiceProvider).getUserProfile();
 });
@@ -22,7 +26,9 @@ final userJourneyProvider = FutureProvider.autoDispose<Map<String, dynamic>>((re
 
   // 1. Fetch all levels
   final levelsResponse = await supabase.from('levels').select().order('level_order', ascending: true);
-  final List<Map<String, dynamic>> allLevels = List<Map<String, dynamic>>.from(levelsResponse);
+  final List<Map<String, dynamic>> allLevelsRaw = List<Map<String, dynamic>>.from(levelsResponse);
+  final List<Map<String, dynamic>> allLevels =
+      allLevelsRaw.where((l) => l['id'].toString() != kMockExamPoolLevelId).toList();
 
   // 2. Fetch the current user's progress
   final progressResponse = await supabase.from('user_level_progress').select().eq('user_id', user.id);

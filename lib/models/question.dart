@@ -3,7 +3,9 @@ class Question {
   final String levelId;
   final String? skillAreaId;
   final String questionText;
-  final String correctAnswer;
+  final String? correctAnswer;
+  final String questionType; // single | multi
+  final List<String>? correctAnswers; // multi-select
   final List<String> answerOptions;
   final String? explanation;
   final String? imageUrl; // <-- ADDED THIS FOR YOUR PDF FIGURES
@@ -14,6 +16,8 @@ class Question {
     this.skillAreaId,
     required this.questionText,
     required this.correctAnswer,
+    required this.questionType,
+    required this.correctAnswers,
     required this.answerOptions,
     this.explanation,
     this.imageUrl, // <-- ADDED THIS
@@ -26,7 +30,11 @@ class Question {
       levelId: json['level_id'].toString(),
       skillAreaId: json['skill_area_id']?.toString(),
       questionText: json['question_text'] as String,
-      correctAnswer: json['correct_answer'] as String,
+      correctAnswer: json['correct_answer'] as String?,
+      questionType: (json['question_type'] ?? 'single').toString(),
+      correctAnswers: (json['correct_answers'] is List)
+          ? List<String>.from(json['correct_answers'] as List)
+          : null,
       // Supabase returns arrays as List<dynamic>, so we cast to List<String>
       answerOptions: List<String>.from(json['answer_options'] ?? []),
       explanation: json['explanation'] as String?,
@@ -42,6 +50,8 @@ class Question {
       'skill_area_id': skillAreaId,
       'question_text': questionText,
       'correct_answer': correctAnswer,
+      'question_type': questionType,
+      'correct_answers': correctAnswers,
       'answer_options': answerOptions,
       'explanation': explanation,
       'image_url': imageUrl, // <-- ADDED THIS

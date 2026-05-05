@@ -28,8 +28,6 @@ gamify-app-1/
 ├── supabase/
 │   └── migrations/
 │       └── 0001_initial_schema.sql   # Full DB schema
-├── exam_parser/
-│   └── process_exam.py           # Python script to bulk-import exam PDFs into Supabase
 └── lib/
     ├── main.dart                 # App entry point — loads .env, inits Supabase, runs app
     ├── core/
@@ -219,13 +217,7 @@ SUPABASE_ANON_KEY=your-anon-key
 
 ### Exam Content Import
 
-To bulk-import exam questions from PDF:
-
-```bash
-cd exam_parser
-pip install -r requirements.txt  # if not already done
-SUPABASE_URL=... SUPABASE_SERVICE_KEY=... python process_exam.py
-```
+Exam questions are imported directly into Supabase (SQL inserts + optional figure URLs in Storage). The repository intentionally does not ship any raw exam PDFs or parsing utilities.
 
 ---
 

@@ -9,6 +9,9 @@ final supabaseServiceProvider = Provider<SupabaseService>((ref) {
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
+  // Level that holds the Final Mock Exam question pool.
+  static const String mockExamPoolLevelId = '55555555-5555-5555-5555-555555555555';
+
   // --- AUTHENTICATION ---
   Future<AuthResponse> signUp({required String email, required String password}) async {
     return await _client.auth.signUp(email: email, password: password);
@@ -191,8 +194,9 @@ class SupabaseService {
     try {
       final response = await _client
           .from('questions')
-          .select('*, skill_areas(title)') 
-          .limit(100); 
+          .select('*, skill_areas(title)')
+          .eq('level_id', mockExamPoolLevelId)
+          .limit(500);
       
       final List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(response);
       questions.shuffle();
@@ -306,14 +310,23 @@ class SupabaseService {
     required String skillAreaId,
     required String questionText,
     required List<String> answerOptions, 
-    required String correctAnswer,
+    required String? correctAnswer,
+    String questionType = 'single',
+    List<String>? correctAnswers,
+    String? explanation,
+    String? imageUrl,
   }) async {
+    final normalizedType = (questionType.trim().isEmpty) ? 'single' : questionType.trim();
     await _client.from('questions').insert({
       'level_id': levelId,
       'skill_area_id': skillAreaId,
       'question_text': questionText,
       'answer_options': answerOptions, 
-      'correct_answer': correctAnswer,
+      'question_type': normalizedType,
+      'correct_answer': (normalizedType == 'multi') ? null : correctAnswer,
+      'correct_answers': (normalizedType == 'multi') ? (correctAnswers ?? <String>[]) : null,
+      'explanation': explanation,
+      'image_url': (imageUrl == null || imageUrl.trim().isEmpty) ? null : imageUrl.trim(),
     });
   }
   

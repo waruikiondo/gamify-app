@@ -15,7 +15,7 @@ class ExploreScreen extends ConsumerWidget {
     final journeyAsync = ref.watch(userJourneyProvider);
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
     final gateAsync = ref.watch(accessGateStatusProvider);
-    
+
     final bool hasPassedFinal = hasPassedExamAsync.value ?? false;
     final bool isAdmin = gateAsync.value?.isAdmin ?? false;
 
@@ -27,41 +27,65 @@ class ExploreScreen extends ConsumerWidget {
           children: [
             const Padding(
               padding: EdgeInsets.all(24.0),
-              child: Text('Exploration Map', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Exploration Map',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             Expanded(
               child: journeyAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-                error: (err, stack) => Center(child: Text('Error loading map: $err', style: const TextStyle(color: Colors.redAccent))),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary),
+                ),
+                error: (err, stack) => Center(
+                  child: Text(
+                    'Error loading map: $err',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
                 data: (journeyData) {
                   final List<dynamic> levels = journeyData['levels'];
-                  final bool isFullyComplete = journeyData['isFullyComplete'] ?? false;
-                  
+                  final bool isFullyComplete =
+                      journeyData['isFullyComplete'] ?? false;
+
                   if (levels.isEmpty) {
-                    return const Center(child: Text('No levels available yet.', style: TextStyle(color: Colors.white)));
+                    return const Center(
+                      child: Text(
+                        'No levels available yet.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 16.0,
+                    ),
                     // We add +1 to the length to append our Final Exam node at the very end
                     itemCount: levels.length + 1,
                     itemBuilder: (context, index) {
-                      
                       // If we are at the very end of the list, render the Final Boss Node!
                       if (index == levels.length) {
                         return _buildFinalBossTile(
-                          context, 
+                          context,
                           ref, // <-- PASSED REF HERE
-                          isUnlocked: isFullyComplete, 
-                          hasPassed: hasPassedFinal
+                          isUnlocked: isFullyComplete || isAdmin,
+                          hasPassed: hasPassedFinal,
                         );
                       }
 
                       // Otherwise, render the standard chapters
                       final level = levels[index];
                       final bool isCompleted = level['isCompleted'] ?? false;
-                      final bool isLocked = isAdmin ? false : (level['isLocked'] ?? true);
-                      
+                      final bool isLocked = isAdmin
+                          ? false
+                          : (level['isLocked'] ?? true);
+
                       return _buildTimelineTile(
                         context,
                         ref, // <-- PASSED REF HERE
@@ -70,7 +94,7 @@ class ExploreScreen extends ConsumerWidget {
                         isCompleted: isCompleted,
                         isLocked: isLocked,
                         // Normal levels are never the last item anymore, the Final Exam is.
-                        isLast: false, 
+                        isLast: false,
                         levelId: level['id'],
                       );
                     },
@@ -85,7 +109,9 @@ class ExploreScreen extends ConsumerWidget {
   }
 
   // --- UPDATED TIMELINE TILE WITH ANALYTICS ---
-  Widget _buildTimelineTile(BuildContext context, WidgetRef ref, {
+  Widget _buildTimelineTile(
+    BuildContext context,
+    WidgetRef ref, {
     required String title,
     required String description,
     required bool isCompleted,
@@ -94,7 +120,7 @@ class ExploreScreen extends ConsumerWidget {
     required String levelId,
   }) {
     Color nodeColor = AppTheme.border;
-    
+
     if (isCompleted) {
       nodeColor = Colors.greenAccent;
     } else if (!isLocked) {
@@ -108,19 +134,32 @@ class ExploreScreen extends ConsumerWidget {
           Column(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: isCompleted ? Colors.greenAccent.withValues(alpha:0.2) : (isLocked ? AppTheme.surface : AppTheme.primary.withValues(alpha:0.2)),
+                  color: isCompleted
+                      ? Colors.greenAccent.withValues(alpha: 0.2)
+                      : (isLocked
+                            ? AppTheme.surface
+                            : AppTheme.primary.withValues(alpha: 0.2)),
                   shape: BoxShape.circle,
                   border: Border.all(color: nodeColor, width: 2),
                 ),
                 child: Icon(
-                  isCompleted ? Icons.check : (isLocked ? Icons.lock : Icons.play_arrow),
-                  size: 16, color: nodeColor,
+                  isCompleted
+                      ? Icons.check
+                      : (isLocked ? Icons.lock : Icons.play_arrow),
+                  size: 16,
+                  color: nodeColor,
                 ),
               ),
               if (!isLast)
-                Expanded(child: Container(width: 2, color: isCompleted ? Colors.greenAccent : AppTheme.border)),
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isCompleted ? Colors.greenAccent : AppTheme.border,
+                  ),
+                ),
             ],
           ),
           const SizedBox(width: 24),
@@ -130,20 +169,45 @@ class ExploreScreen extends ConsumerWidget {
               child: Container(
                 margin: const EdgeInsets.only(bottom: 32),
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text(description, style: const TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: AppTheme.textGrey,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    if ((!isLocked || (ref.watch(accessGateStatusProvider).value?.isAdmin ?? false)) && !isCompleted)
+                    if ((!isLocked ||
+                            (ref
+                                    .watch(accessGateStatusProvider)
+                                    .value
+                                    ?.isAdmin ??
+                                false)) &&
+                        !isCompleted)
                       ElevatedButton(
                         onPressed: () {
                           // --- 1. NEW ANALYTICS HOOK ---
-                          ref.read(analyticsServiceProvider).trackLevelStarted(levelId.toString());
-                          
+                          ref
+                              .read(analyticsServiceProvider)
+                              .trackLevelStarted(levelId.toString());
+
                           // Proceed to navigation
                           context.push('/level/$levelId');
                         },
@@ -160,9 +224,16 @@ class ExploreScreen extends ConsumerWidget {
   }
 
   // --- UPDATED FINAL EXAM NODE WITH ANALYTICS ---
-  Widget _buildFinalBossTile(BuildContext context, WidgetRef ref, {required bool isUnlocked, required bool hasPassed}) {
-    Color nodeColor = hasPassed ? Colors.amber : (isUnlocked ? Colors.amberAccent : AppTheme.border);
-    
+  Widget _buildFinalBossTile(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isUnlocked,
+    required bool hasPassed,
+  }) {
+    Color nodeColor = hasPassed
+        ? Colors.amber
+        : (isUnlocked ? Colors.amberAccent : AppTheme.border);
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,15 +241,23 @@ class ExploreScreen extends ConsumerWidget {
           Column(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: hasPassed ? Colors.amber.withValues(alpha: 0.2) : (isUnlocked ? Colors.amberAccent.withValues(alpha: 0.2) : AppTheme.surface),
+                  color: hasPassed
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : (isUnlocked
+                            ? Colors.amberAccent.withValues(alpha: 0.2)
+                            : AppTheme.surface),
                   shape: BoxShape.circle,
                   border: Border.all(color: nodeColor, width: 2),
                 ),
                 child: Icon(
-                  hasPassed ? Icons.emoji_events : (isUnlocked ? Icons.warning_amber_rounded : Icons.lock),
-                  size: 16, color: nodeColor,
+                  hasPassed
+                      ? Icons.emoji_events
+                      : (isUnlocked ? Icons.warning_amber_rounded : Icons.lock),
+                  size: 16,
+                  color: nodeColor,
                 ),
               ),
             ],
@@ -191,61 +270,106 @@ class ExploreScreen extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 32),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: hasPassed ? Colors.amber.withValues(alpha: 0.05) : (isUnlocked ? const Color(0xFF1E1A3A) : AppTheme.surface), 
-                  borderRadius: BorderRadius.circular(16), 
+                  color: hasPassed
+                      ? Colors.amber.withValues(alpha: 0.05)
+                      : (isUnlocked
+                            ? const Color(0xFF1E1A3A)
+                            : AppTheme.surface),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: hasPassed ? Colors.amber : (isUnlocked ? Colors.amberAccent : AppTheme.border), 
-                    width: isUnlocked ? 2 : 1
-                  )
+                    color: hasPassed
+                        ? Colors.amber
+                        : (isUnlocked ? Colors.amberAccent : AppTheme.border),
+                    width: isUnlocked ? 2 : 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasPassed ? 'CERTIFICATION CLEARED' : 'FINAL CHALLENGE', 
+                      hasPassed ? 'CERTIFICATION CLEARED' : 'FINAL CHALLENGE',
                       style: TextStyle(
-                        color: hasPassed ? Colors.amber : (isUnlocked ? Colors.amberAccent : AppTheme.textGrey), 
-                        fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold
-                      )
+                        color: hasPassed
+                            ? Colors.amber
+                            : (isUnlocked
+                                  ? Colors.amberAccent
+                                  : AppTheme.textGrey),
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const Text('Mock Exam', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Mock Exam',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                      hasPassed ? 'You have successfully conquered the final challenge.' : 'Prove your mastery to earn your certification. This will test everything you have learned.', 
-                      style: const TextStyle(color: AppTheme.textGrey, fontSize: 14)
+                      hasPassed
+                          ? 'You have successfully conquered the final challenge.'
+                          : 'Prove your mastery to earn your certification. This will test everything you have learned.',
+                      style: const TextStyle(
+                        color: AppTheme.textGrey,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     if (isUnlocked && !hasPassed)
                       ElevatedButton(
                         onPressed: () {
                           // --- 2. NEW ANALYTICS HOOK ---
-                          ref.read(analyticsServiceProvider).trackMockExamStarted();
-                          
+                          ref
+                              .read(analyticsServiceProvider)
+                              .trackMockExamStarted();
+
                           // Proceed to navigation
-                          context.push('/mock-exam');
+                          context.push('/mock-exam/briefing');
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                        ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('START EXAM', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                            Text(
+                              'START EXAM',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 20, color: Colors.black),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 20,
+                              color: Colors.black,
+                            ),
                           ],
                         ),
                       ),
-                      
+
                     if (hasPassed)
-                       ElevatedButton(
+                      ElevatedButton(
                         onPressed: () {
                           // Good practice to also track retakes
-                          ref.read(analyticsServiceProvider).trackMockExamStarted();
-                          context.push('/mock-exam');
+                          ref
+                              .read(analyticsServiceProvider)
+                              .trackMockExamStarted();
+                          context.push('/mock-exam/briefing');
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.border),
-                        child: const Text('Retake Exam', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.border,
+                        ),
+                        child: const Text(
+                          'Retake Exam',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                   ],
                 ),

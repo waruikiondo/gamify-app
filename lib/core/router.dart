@@ -13,9 +13,11 @@ import '../screens/level_overview_screen.dart';
 import '../screens/level_screen.dart';
 import '../screens/admin_question_preview_screen.dart';
 import '../screens/mock_exam_screen.dart';
+import '../screens/mock_exam_briefing_screen.dart';
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/access_code_screen.dart';
 import '../providers/access_gate_provider.dart';
+import '../providers/global_providers.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -58,6 +60,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
       }
+
+      // Guard: mock exam requires completing the learning journey (admins bypass).
+      if (session != null && path.startsWith('/mock-exam')) {
+        final status = await ref.read(accessGateStatusProvider.future);
+        if (!status.isAdmin) {
+          final journey = await ref.read(userJourneyProvider.future);
+          final bool isFullyComplete = journey['isFullyComplete'] == true;
+          if (!isFullyComplete) return '/dashboard';
+        }
+      }
       
       return null; 
     },
@@ -96,6 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       
       GoRoute(path: '/mock-exam', builder: (context, state) => const MockExamScreen()),
+      GoRoute(path: '/mock-exam/briefing', builder: (context, state) => const MockExamBriefingScreen()),
       GoRoute(path: '/admin', builder: (context, state) => const AdminDashboardScreen()),
     ],
   );

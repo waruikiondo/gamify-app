@@ -24,6 +24,7 @@ class LevelScreen extends ConsumerStatefulWidget {
 class _LevelScreenState extends ConsumerState<LevelScreen> {
   int _currentIndex = 0;
   int? _selectedIndex;
+  final Set<int> _selectedMulti = <int>{};
   bool _hasSubmitted = false;
   bool _isSavingProgress = false; 
   int _score = 0;
@@ -32,13 +33,29 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
   final List<Map<String, dynamic>> _questionAttempts = [];
 
   void _submitAnswer(List<Map<String, dynamic>> questions) {
-    if (_selectedIndex == null) return;
-
     final currentQuestion = questions[_currentIndex];
     final options = currentQuestion['answer_options'] as List<dynamic>;
-    final String correctAnswerText = currentQuestion['correct_answer'] as String;
-    
-    final bool passed = options[_selectedIndex!] == correctAnswerText;
+    final questionType = (currentQuestion['question_type'] ?? 'single').toString();
+
+    bool passed = false;
+    if (questionType == 'multi') {
+      final correctRaw = currentQuestion['correct_answers'];
+      final correctAnswers = (correctRaw is List)
+          ? correctRaw.map((e) => e.toString()).toSet()
+          : <String>{};
+      final selectedAnswers = _selectedMulti
+          .where((i) => i >= 0 && i < options.length)
+          .map((i) => options[i].toString())
+          .toSet();
+      passed = selectedAnswers.isNotEmpty &&
+          correctAnswers.isNotEmpty &&
+          selectedAnswers.length == correctAnswers.length &&
+          selectedAnswers.containsAll(correctAnswers);
+    } else {
+      if (_selectedIndex == null) return;
+      final String correctAnswerText = (currentQuestion['correct_answer'] ?? '').toString();
+      passed = options[_selectedIndex!] == correctAnswerText;
+    }
 
     // Record the attempt for Skill Mastery tracking
     _questionAttempts.add({
@@ -60,6 +77,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
       setState(() {
         _currentIndex++;
         _selectedIndex = null;
+        _selectedMulti.clear();
         _hasSubmitted = false;
       });
     } else {
@@ -178,8 +196,13 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
 
             final currentQuestion = questions[_currentIndex];
             final List<dynamic> options = currentQuestion['answer_options'];
-            final String correctAnswerText = currentQuestion['correct_answer'];
+            final questionType = (currentQuestion['question_type'] ?? 'single').toString();
+            final String correctAnswerText = (currentQuestion['correct_answer'] ?? '').toString();
             final int correctIndex = options.indexOf(correctAnswerText);
+            final correctRaw = currentQuestion['correct_answers'];
+            final Set<String> correctAnswersSet = (correctRaw is List)
+                ? correctRaw.map((e) => e.toString()).toSet()
+                : <String>{};
             final progress = (_currentIndex + 1) / questions.length;
 
             return Column(
@@ -244,13 +267,15 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                             text: options[index].toString(),
                             index: index,
                             correctIndex: correctIndex,
+                            isMulti: questionType == 'multi',
+                            correctAnswers: correctAnswersSet,
                           );
                         }),
                       ],
                     ),
                   ),
                 ),
-                _buildBottomAction(correctIndex, currentQuestion['explanation'] ?? '', questions),
+                _buildBottomAction(questionType, correctIndex, correctAnswersSet, currentQuestion['explanation'] ?? '', options, questions),
               ],
             );
           },
@@ -259,25 +284,54 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     );
   }
 
-  Widget _buildOptionCard({required String text, required int index, required int correctIndex}) {
-    final isSelected = _selectedIndex == index;
-    final isCorrect = index == correctIndex;
+  Widget _buildOptionCard({
+    required String text,
+    required int index,
+    required int correctIndex,
+    required bool isMulti,
+    required Set<String> correctAnswers,
+  }) {
+    final isSelected = isMulti ? _selectedMulti.contains(index) : _selectedIndex == index;
+    final isCorrect = isMulti ? correctAnswers.contains(text) : index == correctIndex;
 
     Color borderColor = AppTheme.border;
     Color bgColor = AppTheme.surface;
+    Color textColor = Colors.white;
+    IconData? leadingIcon;
+    Color? leadingColor;
 
     if (_hasSubmitted) {
       if (isCorrect) {
         borderColor = Colors.greenAccent;
+        textColor = Colors.greenAccent;
+        leadingIcon = Icons.check_circle;
+        leadingColor = Colors.greenAccent;
       } else if (isSelected) {
         borderColor = Colors.redAccent;
+        textColor = Colors.redAccent;
+        leadingIcon = Icons.cancel;
+        leadingColor = Colors.redAccent;
       }
     } else if (isSelected) {
       borderColor = AppTheme.primary;
     }
 
     return GestureDetector(
-      onTap: _hasSubmitted ? null : () => setState(() => _selectedIndex = index),
+      onTap: _hasSubmitted
+          ? null
+          : () {
+              setState(() {
+                if (isMulti) {
+                  if (_selectedMulti.contains(index)) {
+                    _selectedMulti.remove(index);
+                  } else {
+                    _selectedMulti.add(index);
+                  }
+                } else {
+                  _selectedIndex = index;
+                }
+              });
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
@@ -286,23 +340,78 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor, width: 2),
         ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 16)),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isMulti)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
+                  isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                  size: 18,
+                  color: isSelected ? AppTheme.primary : AppTheme.textGrey,
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  size: 18,
+                  color: isSelected ? AppTheme.primary : AppTheme.textGrey,
+                ),
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_hasSubmitted && leadingIcon != null) ...[
+                    Icon(leadingIcon, size: 16, color: leadingColor),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(child: Text(text, style: TextStyle(color: textColor, fontSize: 16))),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBottomAction(int correctIndex, String explanation, List<Map<String, dynamic>> questions) {
+  Widget _buildBottomAction(
+    String questionType,
+    int correctIndex,
+    Set<String> correctAnswersSet,
+    String explanation,
+    List<dynamic> options,
+    List<Map<String, dynamic>> questions,
+  ) {
     if (!_hasSubmitted) {
+      final canSubmit = (questionType == 'multi') ? _selectedMulti.isNotEmpty : _selectedIndex != null;
       return Container(
         padding: const EdgeInsets.all(24.0),
         child: ElevatedButton(
-          onPressed: _selectedIndex == null ? null : () => _submitAnswer(questions),
+          onPressed: canSubmit ? () => _submitAnswer(questions) : null,
           child: const Text('Check Answer'),
         ),
       );
     }
 
-    final bool gotItRight = _selectedIndex == correctIndex;
+    bool gotItRight = false;
+    if (questionType == 'multi') {
+      final selectedAnswers = _selectedMulti
+          .where((i) => i >= 0 && i < options.length)
+          .map((i) => options[i].toString())
+          .toSet();
+      gotItRight = selectedAnswers.isNotEmpty &&
+          correctAnswersSet.isNotEmpty &&
+          selectedAnswers.length == correctAnswersSet.length &&
+          selectedAnswers.containsAll(correctAnswersSet);
+    } else {
+      gotItRight = _selectedIndex == correctIndex;
+    }
 
     return Container(
       padding: const EdgeInsets.all(24.0),

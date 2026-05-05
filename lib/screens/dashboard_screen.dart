@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart'; // <-- NEW: Share Plus Import
 
 import '../core/theme.dart';
 import '../providers/global_providers.dart'; 
+import '../providers/access_gate_provider.dart';
 import '../services/supabase_service.dart';
 import 'explore_screen.dart'; 
 import 'rank_screen.dart';     
@@ -71,6 +72,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final skillsAsyncValue = ref.watch(skillMasteryProvider); 
     final hasPassedExamAsync = ref.watch(finalExamStatusProvider);
     final bool hasPassedFinal = hasPassedExamAsync.value ?? false;
+    final gateAsync = ref.watch(accessGateStatusProvider);
+    // Dashboard keeps learner gating (admin can access mock exam from Explore/Admin tools).
+    // Keep reading gateAsync so any auth changes refresh the UI.
+    final _ = gateAsync.value?.isAdmin ?? false;
     
     // Watching the newly created streak provider
     final streakAsyncValue = ref.watch(userStreakProvider);
@@ -267,9 +272,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                             const SizedBox(height: 24),
                             ElevatedButton(
-                              onPressed: isFullyComplete 
-                                ? () => context.push('/mock-exam') 
-                                : () => context.push('/level/${currentLevel['id']}'), 
+                              onPressed: isFullyComplete
+                                  ? () => context.push('/mock-exam/briefing')
+                                  : () => context.push('/level/${currentLevel['id']}'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: isFullyComplete ? Colors.amber : AppTheme.primary,
                               ),
@@ -277,10 +282,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(isFullyComplete ? 'START FINAL EXAM' : 'Start Session', 
+                                  Text(isFullyComplete ? 'START FINAL EXAM' : 'Start Session',
                                     style: TextStyle(color: isFullyComplete ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
                                   const SizedBox(width: 8),
-                                  Icon(isFullyComplete ? Icons.warning_amber_rounded : Icons.arrow_forward, 
+                                  Icon(isFullyComplete ? Icons.warning_amber_rounded : Icons.arrow_forward,
                                     size: 20, color: isFullyComplete ? Colors.black : Colors.white),
                                 ],
                               ),
@@ -683,7 +688,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
 
         if (isFullyComplete) {
-          context.push('/mock-exam');
+          context.push('/mock-exam/briefing');
           return;
         }
 

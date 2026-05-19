@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/access_config.dart';
 import '../core/theme.dart';
+import '../providers/access_gate_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/access_provisioning_service.dart';
 // Note: Removed custom_text_field import as we are building custom premium inputs inline
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -67,6 +70,52 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
+  Future<void> _onSignupAuthenticated(BuildContext context, WidgetRef ref) async {
+    if (await emailDomainHasActiveInstitutionCode()) {
+      if (!context.mounted) return;
+      context.go('/access-code');
+      return;
+    }
+
+    final result = await provisionIndividualAccess();
+    if (!context.mounted) return;
+
+    if (result.error == 'institution_domain' ||
+        result.error == 'institution_user') {
+      context.go('/access-code');
+      return;
+    }
+
+    ref.invalidate(accessGateStatusProvider);
+
+    if (result.ok && (result.code != null || result.alreadyActive)) {
+      final plan = result.planType ?? kAccessPlanIndividual;
+      context.go(
+        buildAccessWelcomePath(
+          plan: plan,
+          code: result.code,
+          expiresAt: result.expiresAt,
+        ),
+      );
+      return;
+    }
+
+    if (!result.ok && result.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not activate access (${result.error}). '
+            'You can enter a code on the next screen.',
+          ),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+    }
+
+    if (!context.mounted) return;
+    context.go('/access-code');
+  }
+
   Color get _strengthColor {
     switch (_passwordStrength) {
       case 1:
@@ -94,7 +143,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
         );
       } else if (next is AuthAuthenticated) {
-        context.go('/goal-selection');
+        _onSignupAuthenticated(context, ref);
       }
     });
 

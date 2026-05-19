@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/access_config.dart';
 import '../core/theme.dart';
 import '../services/supabase_service.dart';
+import '../services/access_provisioning_service.dart';
 
 // Providers to fetch dropdown data for the Questions Manager
 final adminLevelsProvider =
@@ -32,7 +34,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _isCheckingAccess = true; // Security Flag
   static const Color adminCyan = Colors.cyanAccent;
   final _accessEmailCtrl = TextEditingController();
+  final _accessDomainCtrl = TextEditingController();
   bool _isGeneratingCode = false;
+  bool _accessCodeIsInstitution = true;
 
   @override
   void initState() {
@@ -50,6 +54,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     _explanationCtrl.dispose();
     _imageUrlCtrl.dispose();
     _accessEmailCtrl.dispose();
+    _accessDomainCtrl.dispose();
     super.dispose();
   }
 
@@ -531,16 +536,62 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Generate a one-time code bound to a learner email. When redeemed, access is granted for 45 days.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+          Text(
+            _accessCodeIsInstitution
+                ? 'Institution: one shared code per school domain. All students with '
+                    '@domain email can use it. Access window is $kInstitutionValidityDays days '
+                    'from when you create the code.'
+                : 'Individual: one-time code for a specific learner email. '
+                    'Access lasts $kIndividualValidityDays days when redeemed. '
+                    'Normally auto-provisioned on signup.',
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 14),
           ),
-          const SizedBox(height: 32),
-          _buildAdminTextField(
-            _accessEmailCtrl,
-            'Student Email (e.g. student@school.com)',
-            Icons.email_outlined,
+          const SizedBox(height: 24),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: true,
+                label: Text('Institution'),
+                icon: Icon(Icons.school_outlined, size: 18),
+              ),
+              ButtonSegment(
+                value: false,
+                label: Text('Individual'),
+                icon: Icon(Icons.person_outline, size: 18),
+              ),
+            ],
+            selected: {_accessCodeIsInstitution},
+            onSelectionChanged: (selected) {
+              setState(() => _accessCodeIsInstitution = selected.first);
+            },
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.black;
+                }
+                return Colors.white70;
+              }),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return adminCyan;
+                }
+                return const Color(0xFF131B24);
+              }),
+            ),
           ),
+          const SizedBox(height: 24),
+          if (_accessCodeIsInstitution)
+            _buildAdminTextField(
+              _accessDomainCtrl,
+              'School domain (e.g. harvard.edu)',
+              Icons.domain_outlined,
+            )
+          else
+            _buildAdminTextField(
+              _accessEmailCtrl,
+              'Learner Email (e.g. learner@example.com)',
+              Icons.email_outlined,
+            ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _isGeneratingCode ? null : _generateAndCopyCode,
@@ -577,11 +628,56 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Future<void> _generateAndCopyCode() async {
+    final supabase = Supabase.instance.client;
+
+    if (_accessCodeIsInstitution) {
+      var domain = _accessDomainCtrl.text.trim().toLowerCase();
+      domain = domain.replaceAll(RegExp(r'^@+'), '');
+      if (domain.isEmpty || domain.contains('@')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid school domain (e.g. school.edu).'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isGeneratingCode = true);
+      try {
+        final code = _randomCode(length: 18);
+        final result = await supabase.rpc(
+          'create_institution_access_code',
+          params: {
+            'p_code': code,
+            'p_allowed_domain': domain,
+            'p_validity_days': kInstitutionValidityDays,
+          },
+        );
+
+        if (!mounted) return;
+        await _showCodeCreatedDialog(
+          code: code,
+          isInstitution: true,
+          domain: domain,
+          result: result,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+        );
+      } finally {
+        if (mounted) setState(() => _isGeneratingCode = false);
+      }
+      return;
+    }
+
     final email = _accessEmailCtrl.text.trim().toLowerCase();
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enter a valid student email.'),
+          content: Text('Enter a valid learner email.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -591,79 +687,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     setState(() => _isGeneratingCode = true);
     try {
       final code = _randomCode(length: 18);
-      final supabase = Supabase.instance.client;
       final result = await supabase.rpc(
-        'create_access_code',
+        'create_individual_access_code',
         params: {'p_email': email, 'p_code': code},
       );
 
       if (!mounted) return;
-
-      final ok = (result is Map && result['ok'] == true);
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create code: ${result.toString()}'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-
-      await Clipboard.setData(ClipboardData(text: code));
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF131B24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Access Code Created',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Row(
-            children: [
-              Expanded(
-                child: SelectableText(
-                  code,
-                  style: const TextStyle(
-                    color: adminCyan,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Copy',
-                icon: const Icon(Icons.copy, color: adminCyan),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: code));
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Access code copied to clipboard.'),
-                      backgroundColor: adminCyan,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Close',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-          ],
-        ),
+      await _showCodeCreatedDialog(
+        code: code,
+        isInstitution: false,
+        email: email,
+        result: result,
       );
     } catch (e) {
       if (!mounted) return;
@@ -673,6 +707,104 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     } finally {
       if (mounted) setState(() => _isGeneratingCode = false);
     }
+  }
+
+  Future<void> _showCodeCreatedDialog({
+    required String code,
+    required bool isInstitution,
+    required dynamic result,
+    String? domain,
+    String? email,
+  }) async {
+    final ok = result is Map && result['ok'] == true;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to create code: ${result.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final expiresAt = (result as Map)['expires_at']?.toString();
+    final expiresDisplay = formatExpiresAtForDisplay(expiresAt);
+
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          isInstitution ? 'School code created' : 'Individual code created',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isInstitution
+                  ? 'Domain: @$domain · share with all students on this domain.'
+                  : '$kIndividualValidityDays-day access for $email',
+              style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+            ),
+            if (isInstitution && expiresDisplay.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Students can access until: $expiresDisplay',
+                style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    code,
+                    style: const TextStyle(
+                      color: adminCyan,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Copy',
+                  icon: const Icon(Icons.copy, color: adminCyan),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: code));
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Access code copied to clipboard.'),
+                        backgroundColor: adminCyan,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _submitQuestion() async {
